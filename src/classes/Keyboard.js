@@ -31,8 +31,6 @@ class Keyboard {
             S: false
         };
 
-        console.log(this._state);
-
         document.addEventListener('keydown', turnOn.bind(this, this._state));
         document.addEventListener('keyup', turnOff.bind(this, this._state));
     }

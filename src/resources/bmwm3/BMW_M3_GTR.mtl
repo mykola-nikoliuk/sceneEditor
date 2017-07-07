@@ -28,10 +28,10 @@ map_Kd BMWM3GTRE46_INTERIOR.jpg
 bump BMWM3GTRE46_INTERIOR.jpg
 #
 newmtl Glass
-Ka  0.2 0.3 0.4
-Kd  0.2 0.3 0.4
+Ka  0 0 0
+Kd  0 0 0
 Ks  1.0 1.0 1.0
-d  0.5
+d  0.8
 Ns  1.0
 illum 2
 #
@@ -115,9 +115,10 @@ Ka  0.5 0.5 0.5
 Kd  0.5 0.5 0.5
 Ks  1.0 1.0 1.0
 d  1.0
-Ns  1.0
+Ns 10.0
 illum 2
 map_Kd BMWM3GTR.jpg
+bump BMWM3GTR_BUMP.jpg
 #
 newmtl Chrome
 Ka  0.8 0.8 0.8
