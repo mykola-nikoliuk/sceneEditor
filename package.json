@@ -21,5 +21,9 @@
     "stylus-loader": "^3.0.1",
     "three": "^0.85.2",
     "webpack": "^2.6.1"
+  },
+  "dependencies": {
+    "dat.gui": "^0.6.1",
+    "threejs-utils": "^0.1.3"
   }
 }
