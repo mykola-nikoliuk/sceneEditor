@@ -1,9 +1,17 @@
-// TODO: refactor!!!
-
-export const MOVE = 'move';
-export const UP = 'up';
-export const DOWN = 'down';
-export const WHEEL = 'wheel';
+export const ENUMS = {
+    BUTTONS: {
+        MAIN: 0,
+        MIDDLE: 1,
+        SECOND: 2
+    },
+    EVENTS: {
+        MOVE: 'move',
+        UP: 'up',
+        DOWN: 'down',
+        WHEEL: 'wheel',
+        CONTEXT: 'contextmenu'
+    }
+};
 
 class Mouse {
     constructor() {
@@ -14,9 +22,10 @@ class Mouse {
     }
 
     _move(e) {
-        if (this._state.subscribers[MOVE]) {
-            this._state.subscribers[MOVE].forEach(callback => {
+        if (this._state.subscribers[ENUMS.EVENTS.MOVE]) {
+            this._state.subscribers[ENUMS.EVENTS.MOVE].forEach(callback => {
                 callback({
+                    event: e,
                     delta: {
                         x: e.screenX - this._state.position.x,
                         y: e.screenY - this._state.position.y
@@ -25,34 +34,42 @@ class Mouse {
                         x: e.screenX,
                         y: e.screenY
                     }
-                })
-            })
+                });
+            });
         }
         this._state.position.x = e.screenX;
         this._state.position.y = e.screenY;
     }
 
-    _up() {
-        if (this._state.subscribers[UP]) {
-            this._state.subscribers[UP].forEach(callback => {
-                callback()
-            })
+    _up(e) {
+        if (this._state.subscribers[ENUMS.EVENTS.UP]) {
+            this._state.subscribers[ENUMS.EVENTS.UP].forEach(callback => {
+                callback(e);
+            });
         }
     }
 
-    _down() {
-        if (this._state.subscribers[DOWN]) {
-            this._state.subscribers[DOWN].forEach(callback => {
-                callback()
-            })
+    _down(e) {
+        if (this._state.subscribers[ENUMS.EVENTS.DOWN]) {
+            this._state.subscribers[ENUMS.EVENTS.DOWN].forEach(callback => {
+                callback(e);
+            });
         }
     }
 
     _wheel(e) {
-        if (this._state.subscribers[WHEEL]) {
-            this._state.subscribers[WHEEL].forEach(callback => {
-                callback({x: e.deltaX, y: e.deltaY})
-            })
+        if (this._state.subscribers[ENUMS.EVENTS.WHEEL]) {
+            this._state.subscribers[ENUMS.EVENTS.WHEEL].forEach(callback => {
+                callback({x: e.deltaX, y: e.deltaY});
+            });
+        }
+    }
+
+    _context(e) {
+        if (this._state.subscribers[ENUMS.EVENTS.CONTEXT]) {
+            this._state.subscribers[ENUMS.EVENTS.CONTEXT].forEach(callback => {
+                callback(e);
+            });
         }
     }
 
@@ -60,7 +77,7 @@ class Mouse {
         let eventSubscribers = this._state.subscribers[event];
 
         switch (event) {
-            case MOVE:
+            case ENUMS.EVENTS.MOVE:
                 if (!eventSubscribers) {
                     eventSubscribers = this._state.subscribers[event] = [];
                     document.addEventListener('mousemove', this._move.bind(this));
@@ -68,7 +85,7 @@ class Mouse {
                 eventSubscribers.push(callback);
                 break;
 
-            case DOWN:
+            case ENUMS.EVENTS.DOWN:
                 if (!eventSubscribers) {
                     eventSubscribers = this._state.subscribers[event] = [];
                     document.addEventListener('mousedown', this._down.bind(this));
@@ -76,7 +93,7 @@ class Mouse {
                 eventSubscribers.push(callback);
                 break;
 
-            case UP:
+            case ENUMS.EVENTS.UP:
                 if (!eventSubscribers) {
                     eventSubscribers = this._state.subscribers[event] = [];
                     document.addEventListener('mouseup', this._up.bind(this));
@@ -84,10 +101,18 @@ class Mouse {
                 eventSubscribers.push(callback);
                 break;
 
-            case WHEEL:
+            case ENUMS.EVENTS.WHEEL:
                 if (!eventSubscribers) {
                     eventSubscribers = this._state.subscribers[event] = [];
                     document.addEventListener('mousewheel', this._wheel.bind(this));
+                }
+                eventSubscribers.push(callback);
+                break;
+
+            case ENUMS.EVENTS.CONTEXT:
+                if (!eventSubscribers) {
+                    eventSubscribers = this._state.subscribers[event] = [];
+                    document.addEventListener(ENUMS.EVENTS.CONTEXT, this._context.bind(this));
                 }
                 eventSubscribers.push(callback);
                 break;

@@ -18,7 +18,7 @@ module.exports = {
             test: /\.js$/,
             loader: 'babel-loader'
         }, {
-            test: /\.(mtl|obj)$/,
+            test: /\.(mtl|obj|jpg|png)$/,
             loader: 'file-loader?name=[path][name].[ext]?[hash]&context=./src'
         }]
     },
@@ -30,6 +30,6 @@ module.exports = {
             {from: './resources/**/*.jpg', context: './src'},
             {from: './resources/**/*.png', context: './src'},
             {from: './resources/**/*.tga', context: './src'}
-            ])
+        ])
     ]
 };
