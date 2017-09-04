@@ -170,19 +170,11 @@ function mouseUpdate({event, delta: {x, y}}) {
     const position = new THREE.Vector3();
 
     if (event && moveEnabled) {
-        // console.log(lastClickPosition);
-        // console.log(getPosition(event));
-        // console.log(getPosition(event).sub(lastClickPosition));
         cube.position.add(getPosition(event).sub(getPosition(previousEvent)));
         // position.copy(getPosition(event).sub(lastClickPosition));
         // target.add(getPosition(previousEvent).sub(getPosition(event)));
         // console.log(target);
         // console.log('-');
-
-        //target.x += 0.1;
-
-        // lastClickPosition = getPosition(event);
-
     }
 
     if (rotationEnabled) {
@@ -400,8 +392,6 @@ function findPath(field, start, setPixel) {
 function render(timestamp) {
     const delta = timestamp - previousTimestamp;
     previousTimestamp = timestamp;
-    // mouseUpdate({delta: {x: 0, y: 0}});
-    // target.x += 0.01;
 
     requestAnimationFrame(render);
     renderer.render(scene, camera);
