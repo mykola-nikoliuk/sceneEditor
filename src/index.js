@@ -16,6 +16,7 @@ const {PI} = Math;
 const config = {
     neighborhood: NEIGHBORHOOD.VON_NEUMANN,
     map: 'map',
+    terrain: false,
     upload: () => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -41,6 +42,10 @@ gui.add(
     'map',
     Object.keys(textures)
 ).onChange(() => loadImage(textures[config.map], init));
+gui.add(
+    config,
+    'terrain'
+).onChange(() => init(lastTexture));
 gui.add(config, 'upload');
 
 (() => {
@@ -111,7 +116,7 @@ const cube = new THREE.Mesh(
     new THREE.CubeGeometry(2, 2, 2),
     new THREE.MeshStandardMaterial({color: 0xff})
 );
-scene.add(cube);
+//scene.add(cube);
 
 
 
@@ -137,7 +142,7 @@ function loadImage(src, callback) {
 loadImage(textures[config.map], init);
 
 function scale({y}) {
-    radius += y / 10;
+    radius = (radius +  y / 10).fitToRange(1, Infinity);
     mouseUpdate({delta: {x: 0, y: 0}});
 }
 
@@ -174,7 +179,7 @@ function mouseUpdate({event, delta: {x, y}}) {
         // console.log(target);
         // console.log('-');
 
-        target.x += 0.1;
+        //target.x += 0.1;
 
         // lastClickPosition = getPosition(event);
 
@@ -229,7 +234,9 @@ function createMap(mapImage) {
     plane.rotation.x = -PI / 2;
     subScene.add(plane);
 
-    // createScene(mapImage.width, mapImage.height, map.field, map.colors);
+    if (config.terrain) {
+        createScene(mapImage.width, mapImage.height, map.field, map.colors);
+    }
 }
 
 function parseMap(image) {
@@ -288,7 +295,7 @@ function parseMap(image) {
 }
 
 function createScene(width, height, field, colors) {
-    const maxHeight = 1;
+    const maxHeight = 10;
     const halfWidth = width / 2;
     const halfHeight = height / 2;
     field.forEach((row, y) => {
