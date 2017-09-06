@@ -77,6 +77,7 @@ gui.add(config, 'upload');
             case MIDDLE:
                 moveEnabled = false;
                 break;
+            case MAIN:
             case SECOND:
                 rotationEnabled = false;
                 break;
@@ -87,6 +88,7 @@ gui.add(config, 'upload');
             case MIDDLE:
                 moveEnabled = true;
                 break;
+            case MAIN:
             case SECOND:
                 rotationEnabled = true;
                 break;
