@@ -27,7 +27,7 @@ module.exports = {
             title: 'test'
         }),
         new CopyWebpackPlugin([
-            {from: './resources/**/*.jpg', context: './src'},
+            // {from: './resources/**/*.jpg', context: './src'},
             {from: './resources/**/*.png', context: './src'},
             {from: './resources/**/*.tga', context: './src'}
         ])

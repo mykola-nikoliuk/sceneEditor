@@ -8,3 +8,12 @@ Number.prototype.fitToRange = function (min, max) {
     if (this > max) result = max;
     return result;
 };
+
+
+export function loadImage(src, callback) {
+    const mapImage = new Image;
+    mapImage.onload = () => {
+        callback(mapImage);
+    };
+    mapImage.src = src;
+}

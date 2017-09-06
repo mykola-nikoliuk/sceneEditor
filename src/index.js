@@ -1,22 +1,57 @@
 import THREE from "./lib/three";
 import "./style/index.styl";
-import "./utils/utils";
+import {loadImage} from "./utils/utils";
 import big_labyrinth from "./resources/map/big_labyrinth.png"
 import circle_labyrinth from "./resources/map/circle_labyrinth.png"
 import map from "./resources/map/map.png"
 import labyrinth from "./resources/map/labirynth.png"
+import heightMapData from "./resources/terrain/heightMap.png";
 // import keyboard from "./classes/Keyboard";
 import mouse, {ENUMS as MOUSE_ENUMS} from "./classes/Mouse";
 import utils from "threejs-utils";
 import {NEIGHBORHOOD} from './constants/config';
+import Terrain from './classes/Terrain';
 
 const textures = {map, labyrinth, circle_labyrinth, big_labyrinth};
 const gui = new utils.dat.GUI();
 const {PI} = Math;
+let terrain = null;
+// const config = {
+//     neighborhood: NEIGHBORHOOD.VON_NEUMANN,
+//     map: 'map',
+//     terrain: false,
+//     upload: () => {
+//         const input = document.createElement('input');
+//         input.type = 'file';
+//         input.addEventListener('change', () => {
+//             if (input.files.length) {
+//                 const reader = new FileReader();
+//                 reader.onload = e => {
+//                     loadImage(e.target.result, init);
+//                 };
+//                 reader.readAsDataURL(input.files[0]);
+//             }
+//         });
+//         input.click();
+//     }
+// };
+// gui.add(
+//     config,
+//     'neighborhood',
+//     [NEIGHBORHOOD.VON_NEUMANN, NEIGHBORHOOD.MOORE]
+// ).onChange(() => init(lastTexture));
+// gui.add(
+//     config,
+//     'map',
+//     Object.keys(textures)
+// ).onChange(() => loadImage(textures[config.map], init));
+// gui.add(
+//     config,
+//     'terrain'
+// ).onChange(() => init(lastTexture));
+// gui.add(config, 'upload');
+
 const config = {
-    neighborhood: NEIGHBORHOOD.VON_NEUMANN,
-    map: 'map',
-    terrain: false,
     upload: () => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -24,7 +59,7 @@ const config = {
             if (input.files.length) {
                 const reader = new FileReader();
                 reader.onload = e => {
-                    loadImage(e.target.result, init);
+                    init(e.target.result);
                 };
                 reader.readAsDataURL(input.files[0]);
             }
@@ -32,20 +67,6 @@ const config = {
         input.click();
     }
 };
-gui.add(
-    config,
-    'neighborhood',
-    [NEIGHBORHOOD.VON_NEUMANN, NEIGHBORHOOD.MOORE]
-).onChange(() => init(lastTexture));
-gui.add(
-    config,
-    'map',
-    Object.keys(textures)
-).onChange(() => loadImage(textures[config.map], init));
-gui.add(
-    config,
-    'terrain'
-).onChange(() => init(lastTexture));
 gui.add(config, 'upload');
 
 (() => {
@@ -80,9 +101,13 @@ gui.add(config, 'upload');
 const renderer = new THREE.WebGLRenderer({antialias: true});
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000000);
 const scene = new THREE.Scene();
-const aLight = new THREE.AmbientLight(0xffffff, 2);
+const aLight = new THREE.AmbientLight(0xffffff, 1);
+const pLight = new THREE.SpotLight(0xffffff, 1, 200, Math.PI / 2);
 const cubeGeometry = new THREE.CubeGeometry(1, 1, 1);
-scene.add(aLight);
+// scene.add(aLight);
+scene.add(pLight);
+pLight.position.y = 128;
+pLight.lookAt(new THREE.Vector3());
 
 let previousTimestamp = 0;
 let subScene = null;
@@ -131,15 +156,9 @@ let rotationEnabled = false,
     radius = 160;
 mouseUpdate({delta: {x: 0, y: 0}});
 
-function loadImage(src, callback) {
-    const mapImage = new Image;
-    mapImage.onload = () => {
-        callback(mapImage);
-    };
-    mapImage.src = src;
-}
 
-loadImage(textures[config.map], init);
+init(heightMapData);
+// loadImage(textures[config.map], init);
 
 function scale({y}) {
     radius = (radius +  y / 10).fitToRange(1, Infinity);
@@ -205,8 +224,14 @@ function init(mapImage) {
     }
     subScene = new THREE.Group();
     scene.add(subScene);
-    createMap(mapImage);
+    // createMap(mapImage);
     lastTexture = mapImage;
+
+
+    new Terrain(mapImage, 128, 16, 128, mesh => {
+        subScene.add(mesh);
+    });
+
 }
 
 function createMap(mapImage) {
