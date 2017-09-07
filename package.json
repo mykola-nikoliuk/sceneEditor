@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "server": "webpack-dev-server --port 80 --hot --host 10.0.21.236"
+    "server": "webpack-dev-server --port 80"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "dat.gui": "^0.6.1",
+    "lodash": "^4.17.4",
     "threejs-utils": "^0.1.3"
   }
 }
