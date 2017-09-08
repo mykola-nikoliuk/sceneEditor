@@ -1,6 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const WebpackCleanupPlugin = require('webpack-cleanup-plugin');
 
 module.exports = {
   entry: {
@@ -23,6 +24,7 @@ module.exports = {
     }]
   },
   plugins: [
+    new WebpackCleanupPlugin(),
     new HtmlWebpackPlugin({
       title: 'test'
     }),

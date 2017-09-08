@@ -1,10 +1,14 @@
 import THREE from './lib/three';
+import map from 'lodash/map';
 import './style/index.styl';
-import big_labyrinth from './resources/map/big_labyrinth.png'
-import circle_labyrinth from './resources/map/circle_labyrinth.png'
-import map from './resources/map/map.png'
-import labyrinth from './resources/map/labirynth.png'
-//import heightMapData from './resources/terrain/heightMap.png';
+
+import right from './resources/cubemap/right.jpg';
+import left from './resources/cubemap/left.jpg';
+import top from './resources/cubemap/top.jpg';
+import bottom from './resources/cubemap/bottom.jpg';
+import front from './resources/cubemap/front.jpg';
+import back from './resources/cubemap/back.jpg';
+
 import heightMapData from './resources/terrain/test.png';
 import textureMapData from './resources/terrain/ground.jpg';
 // import keyboard from "./classes/Keyboard";
@@ -16,7 +20,6 @@ import Box from './classes/units/Box';
 import AnimationManager, {Animation, Keyframe, UPDATE_VECTOR3} from './classes/animationManager/AnimationManager';
 
 const animationManager = new AnimationManager();
-const textures = {map, labyrinth, circle_labyrinth, big_labyrinth};
 const gui = new utils.dat.GUI();
 const {PI} = Math;
 
@@ -76,26 +79,25 @@ const config = {
 gui.add(config, 'upload');
 
 let animateUnit = function () {
-  if (unit.animation) {
-    animationManager.remove(unit.animation);
-  }
-  unit.animation = new Animation({
-    target: unit.mesh,
-    duration: 2000,
-    keyframes: [
-      new Keyframe({
-        position: unit.mesh.position.clone()
-      }),
-      new Keyframe({
-        position: terrain.getClosest(getPosition(event))
-      })
-    ],
-    updateFunctions: {
-      position: UPDATE_VECTOR3
+  const path = terrain.findPath(unit.mesh.position, getPosition(event));
+
+  if (path.length) {
+    const keyframes = map(path, position => new Keyframe({position}));
+
+    if (unit.animation) {
+      animationManager.remove(unit.animation);
     }
-  });
-  console.log(terrain.getClosest(getPosition(event)));
-  animationManager.animate(unit.animation);
+    unit.animation = new Animation({
+      target: unit.mesh,
+      duration: 20 * path.length,
+      keyframes,
+      updateFunctions: {
+        position: UPDATE_VECTOR3
+      }
+    });
+    console.log(terrain.getClosest(getPosition(event)));
+    animationManager.animate(unit.animation);
+  }
 };
 
 (() => {
@@ -140,6 +142,7 @@ scene.add(pLight);
 pLight.position.y = 128;
 pLight.lookAt(new THREE.Vector3());
 
+
 let previousTimestamp = 0;
 let subScene = null;
 let lastTexture = null;
@@ -151,14 +154,7 @@ const target = new THREE.Vector3(0, 0, 0);
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const cubemapImages = [
-  'resources/cubemap/right.jpg',
-  'resources/cubemap/left.jpg',
-  'resources/cubemap/top.jpg',
-  'resources/cubemap/bottom.jpg',
-  'resources/cubemap/front.jpg',
-  'resources/cubemap/back.jpg'
-];
+const cubemapImages = [right, left, top, bottom, front, back];
 scene.background = new THREE.CubeTextureLoader().load(cubemapImages);
 
 renderer.setClearColor(0x222222);
@@ -259,13 +255,13 @@ function init(mapImage) {
   terrain = new Terrain({
     heightMapData: mapImage,
     textureMapData
-  }, 128, 4, 128, mesh => {
-    mesh.position.y = -3 / 2;
+  }, 128, 8, 128, mesh => {
     subScene.add(mesh);
   });
 
 
   unit = new Box(3);
+  unit.mesh.position.add(new THREE.Vector3(-30, 0, 0));
   subScene.add(unit.mesh);
 }
 

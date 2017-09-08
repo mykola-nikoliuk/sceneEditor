@@ -43,6 +43,10 @@ export default class ImageGrid {
         return this._grid[y][x];
     }
 
+    get grid() {
+        return this._grid;
+    }
+
     get width() {
         return this._image.width;
     }
