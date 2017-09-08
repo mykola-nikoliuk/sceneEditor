@@ -2,28 +2,37 @@ import THREE from '../lib/three';
 import ImageGrid from './ImageGrid';
 import map from 'lodash/map';
 
-const repeat = 4;
+const repeat = 16;
 
 export default class Terrain {
-  constructor({heightMapData, textureMapData}, width, height, depth, callback = null) {
+  constructor({heightMapUrl, textureMapUrl, normalMapUrl, waterNormalsMapUrl}, env, width, height, depth, callback = null) {
     const geometry = new THREE.Geometry();
-    const map = new THREE.TextureLoader().load(textureMapData);
+    const map = new THREE.TextureLoader().load(textureMapUrl);
     map.wrapS = THREE.RepeatWrapping;
     map.wrapT = THREE.RepeatWrapping;
     map.repeat.set(repeat, repeat);
+    const normal = new THREE.TextureLoader().load(normalMapUrl);
+    //normal.wrapS = THREE.RepeatWrapping;
+    //normal.wrapT = THREE.RepeatWrapping;
+    //normal.repeat.set(repeat, repeat);
 
-    const material = new THREE.MeshLambertMaterial({
-      wireframe: false,
-      map: map
-      //shading: THREE.FlatShading,
-      //vertexColors: THREE.VertexColors
-    });
+    this._mesh = new THREE.Group();
 
     this._width = width;
     this._height = height;
     this._depth = depth;
 
-    const heightMapGrid = this._heightGrid = new ImageGrid(heightMapData);
+    this._addWater(env, waterNormalsMapUrl);
+
+    const material = new THREE.MeshLambertMaterial({
+      wireframe: !true,
+      map: map,
+      //bumpMap: normal,
+      //shading: THREE.FlatShading,
+      //vertexColors: THREE.VertexColors
+    });
+
+    const heightMapGrid = this._heightGrid = new ImageGrid(heightMapUrl);
 
     // material.side = THREE.DoubleSide;
 
@@ -84,7 +93,7 @@ export default class Terrain {
       geometry.computeVertexNormals();
 
       // this._mesh = new THREE.Mesh(new THREE.CubeGeometry(width, height, depth), new THREE.MeshStandardMaterial({color: 0x666666}));
-      this._mesh = new THREE.Mesh(geometry, material);
+      this._mesh.add(new THREE.Mesh(geometry, material));
       callback && callback(this._mesh);
     });
 
@@ -221,4 +230,36 @@ export default class Terrain {
     return result.reverse();
   }
 
+  _addWater({renderer, camera, light, fog}, normalsMap) {
+    const waterNormals = new THREE.TextureLoader().load(normalsMap);
+    waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping;
+
+    this._water = new THREE.Water(renderer, camera, this._mesh, {
+      textureWidth: 512,
+      textureHeight: 512,
+      waterNormals: waterNormals,
+      alpha: .8,
+      sunDirection: light.position.clone().normalize(),
+      sunColor: 0xffffff,
+      waterColor: 0x001e0f,
+      distortionScale: 24.0,
+      fog
+    });
+
+    this._mesh.add(this._water);
+
+    const mirrorMesh = new THREE.Mesh(
+      new THREE.PlaneBufferGeometry(this._width, this._depth),
+      this._water.material
+    );
+    mirrorMesh.add(this._water);
+    mirrorMesh.rotation.x = - Math.PI * 0.5;
+    mirrorMesh.position.y = 0.15 * this._height;
+    this._mesh.add(mirrorMesh);
+  }
+
+  render() {
+    this._water.material.uniforms.time.value += 0.01;
+    this._water.render();
+  }
 }

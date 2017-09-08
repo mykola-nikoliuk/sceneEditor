@@ -9,8 +9,10 @@ import bottom from './resources/cubemap/bottom.jpg';
 import front from './resources/cubemap/front.jpg';
 import back from './resources/cubemap/back.jpg';
 
-import heightMapData from './resources/terrain/test.png';
-import textureMapData from './resources/terrain/ground.jpg';
+import waterNormalsMapUrl from './resources/terrain/waternormals.jpg';
+import heightMapData from './resources/terrain/heightMap.png';
+import normalMapUrl from './resources/terrain/ground_normal.jpg';
+import textureMapUrl from './resources/terrain/ground.jpg';
 // import keyboard from "./classes/Keyboard";
 import mouse, {ENUMS as MOUSE_ENUMS} from './classes/Mouse';
 import utils from 'threejs-utils';
@@ -25,6 +27,7 @@ const {PI} = Math;
 
 let terrain = null;
 let unit = null;
+let skyBox = null;
 // const config = {
 //     neighborhood: NEIGHBORHOOD.VON_NEUMANN,
 //     map: 'map',
@@ -132,21 +135,22 @@ let animateUnit = function () {
 })();
 
 const renderer = new THREE.WebGLRenderer({antialias: true});
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000000);
+//const camera = window.camera = new THREE.CinematicCamera(45, window.innerWidth / window.innerHeight, 1, 1000000);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000000);
 const scene = new THREE.Scene();
 const aLight = new THREE.AmbientLight(0xffffff, 1);
-const pLight = new THREE.SpotLight(0xffffff, 1, 200, Math.PI / 2);
+const dLight = new THREE.DirectionalLight(0xffffff, 1);
 const cubeGeometry = new THREE.CubeGeometry(1, 1, 1);
-// scene.add(aLight);
-scene.add(pLight);
-pLight.position.y = 128;
-pLight.lookAt(new THREE.Vector3());
 
+dLight.position.set(-1, 1, -1);
+//camera.setLens(10);
+
+//scene.fog = new THREE.FogExp2(0x666666, 0.001);
+// scene.add(aLight);
+scene.add(dLight);
 
 let previousTimestamp = 0;
 let subScene = null;
-let lastTexture = null;
-let lastClickPosition = null;
 
 let previousEvent;
 const target = new THREE.Vector3(0, 0, 0);
@@ -155,7 +159,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 const cubemapImages = [right, left, top, bottom, front, back];
-scene.background = new THREE.CubeTextureLoader().load(cubemapImages);
+//scene.background = new THREE.CubeTextureLoader().load(cubemapImages);
 
 renderer.setClearColor(0x222222);
 renderer.shadowMap.enabled = true;
@@ -179,7 +183,7 @@ let theta = -Math.PI / 2 + Math.PI / 8,
     phi   = -Math.PI / 2;
 let rotationEnabled = false,
     moveEnabled     = false,
-    radius          = 150;
+    radius          = 700;
 mouseUpdate({delta: {x: 0, y: 0}});
 
 
@@ -238,24 +242,33 @@ function mouseUpdate({event, delta: {x, y}}) {
   camera.position.copy(position);
   camera.lookAt(target);
 
+  skyBox && skyBox.position.copy(position);
+
   if (event) {
     previousEvent = event;
   }
 }
 
-function init(mapImage) {
+function init(heightMapUrl) {
   if (subScene) {
     scene.remove(subScene);
   }
   subScene = new THREE.Group();
   scene.add(subScene);
   // createMap(mapImage);
-  lastTexture = mapImage;
+  //lastTexture = mapImage;
 
   terrain = new Terrain({
-    heightMapData: mapImage,
-    textureMapData
-  }, 128, 8, 128, mesh => {
+    heightMapUrl,
+    textureMapUrl,
+    normalMapUrl,
+    waterNormalsMapUrl
+  }, {
+    renderer,
+    camera,
+    fog: scene.fog,
+    light: dLight
+  }, 1024, 128, 1024, mesh => {
     subScene.add(mesh);
   });
 
@@ -263,6 +276,65 @@ function init(mapImage) {
   unit = new Box(3);
   unit.mesh.position.add(new THREE.Vector3(-30, 0, 0));
   subScene.add(unit.mesh);
+
+  var cubeShader = THREE.ShaderLib[ 'cube' ];
+  cubeShader.uniforms[ 'tCube' ].value = new THREE.CubeTextureLoader().load(cubemapImages);
+  var skyBoxMaterial = new THREE.ShaderMaterial( {
+    fragmentShader: cubeShader.fragmentShader,
+    vertexShader: cubeShader.vertexShader,
+    uniforms: cubeShader.uniforms,
+    depthWrite: false,
+    side: THREE.BackSide
+  } );
+  skyBox = new THREE.Mesh(
+    new THREE.BoxGeometry(100000, 100000, 100000),
+    skyBoxMaterial
+  );
+  subScene.add(skyBox);
+
+
+
+
+
+
+
+  var effectController  = {
+    focalLength: 36,
+    // jsDepthCalculation: true,
+    // shaderFocus: true,
+    //
+    fstop: 512,
+     //maxblur: 1.0,
+    //
+    showFocus: !true,
+    focalDepth: 512,
+    // manualdof: false,
+    // vignetting: false,
+    // depthblur: false,
+    //
+    // threshold: 0.5,
+    // gain: 2.0,
+    // bias: 0.5,
+    // fringe: 0.7,
+    //
+    // focalLength: 35,
+    // noise: true,
+    // pentagon: false,
+    //
+    // dithering: 0.0001
+  };
+  var matChanger = function( ) {
+    for (var e in effectController) {
+      if (e in camera.postprocessing.bokeh_uniforms)
+        camera.postprocessing.bokeh_uniforms[ e ].value = effectController[ e ];
+    }
+    camera.postprocessing.bokeh_uniforms[ 'znear' ].value = camera.near;
+    camera.postprocessing.bokeh_uniforms[ 'zfar' ].value = camera.far;
+    camera.setLens(effectController.focalLength, camera.frameHeight ,effectController.fstop, camera.coc);
+    effectController['focalDepth'] = camera.postprocessing.bokeh_uniforms["focalDepth"].value;
+  };
+  //matChanger();
+
 }
 
 function createMap(mapImage) {
@@ -445,11 +517,22 @@ function findPath(field, start, setPixel) {
   return result;
 }
 
+
 function render(timestamp) {
   const delta = timestamp - previousTimestamp;
   previousTimestamp = timestamp;
-
   animationManager.update(delta);
+
+
+  camera.updateMatrixWorld();
   requestAnimationFrame(render);
+  terrain && terrain.render();
+
   renderer.render(scene, camera);
+
+  //if(camera.postprocessing.enabled){
+  //  //rendering Cinematic Camera effects
+  //  camera.renderCinematic(scene, renderer);
+  //}
+
 }
