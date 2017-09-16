@@ -1,3 +1,5 @@
+const spin = Math.PI * 2;
+
 Number.prototype.toRadians = function () {
     return this * Math.PI / 180;
 };
@@ -9,11 +11,14 @@ Number.prototype.fitToRange = function (min, max) {
     return result;
 };
 
-
 export function loadImage(src, callback) {
     const mapImage = new Image;
     mapImage.onload = () => {
         callback(mapImage);
     };
     mapImage.src = src;
+}
+
+export function normalizeAngle(angle) {
+    return (angle % spin + spin) % spin;
 }

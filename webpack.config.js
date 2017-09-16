@@ -19,7 +19,7 @@ module.exports = {
       test: /\.js$/,
       loader: 'babel-loader'
     }, {
-      test: /\.(mtl|obj|jpg|png)$/,
+      test: /\.(mtl|obj|fbx|jpg|png)$/,
       loader: 'file-loader?name=[path][name].[ext]?[hash]&context=./src'
     }]
   },
@@ -29,9 +29,11 @@ module.exports = {
       title: 'test'
     }),
     new CopyWebpackPlugin([
-      {from: './resources/**/*.jpg', context: './src'},
-      {from: './resources/**/*.png', context: './src'},
-      {from: './resources/**/*.tga', context: './src'}
+      {from: '**/*.FBX', context: './src'},
+      {from: '**/*.tga', context: './src'},
+      {from: '**/*.jpg', context: './src'},
+      {from: '**/*.png', context: './src'},
+      {from: '**/*.tga', context: './src'}
     ])
   ]
 };

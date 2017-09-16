@@ -60,7 +60,7 @@ class Mouse {
     _wheel(e) {
         if (this._state.subscribers[ENUMS.EVENTS.WHEEL]) {
             this._state.subscribers[ENUMS.EVENTS.WHEEL].forEach(callback => {
-                callback({x: e.deltaX, y: e.deltaY});
+                callback(e, {x: e.deltaX, y: e.deltaY});
             });
         }
     }

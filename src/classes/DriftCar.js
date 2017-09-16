@@ -1,4 +1,4 @@
-import THREE from "../lib/three";
+import THREE from "./lib/three";
 import Car from "../classes/car/Car";
 import each from "lodash/each";
 

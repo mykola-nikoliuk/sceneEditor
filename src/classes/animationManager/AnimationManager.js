@@ -2,7 +2,7 @@ export {Animation} from './Animation';
 export {Keyframe} from './Keyframe';
 export {ENUMS} from './enums';
 
-import THREE from '../../lib/three';
+import THREE from '../lib/three';
 import each from 'lodash/each';
 import get from 'lodash/get';
 import find from 'lodash/find';

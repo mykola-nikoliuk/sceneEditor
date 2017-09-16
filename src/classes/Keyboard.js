@@ -14,7 +14,6 @@ function turnOff(state, {keyCode}) {
 }
 
 function turnOn(state, {keyCode}) {
-    console.log(keyCode);
     if (typeof KEY_CODES[keyCode] === 'string') {
         state[KEY_CODES[keyCode]] = true;
     }

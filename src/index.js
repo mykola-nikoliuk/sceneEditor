@@ -1,33 +1,201 @@
-import THREE from './lib/three';
+import THREE from './classes/lib/three';
 import map from 'lodash/map';
+import Stats from 'stats-js';
 import './style/index.styl';
-
-import right from './resources/cubemap/right.jpg';
-import left from './resources/cubemap/left.jpg';
-import top from './resources/cubemap/top.jpg';
-import bottom from './resources/cubemap/bottom.jpg';
-import front from './resources/cubemap/front.jpg';
-import back from './resources/cubemap/back.jpg';
-
-import waterNormalsMapUrl from './resources/terrain/waternormals.jpg';
-import heightMapData from './resources/terrain/heightMap.png';
-import normalMapUrl from './resources/terrain/ground_normal.jpg';
-import textureMapUrl from './resources/terrain/ground.jpg';
-// import keyboard from "./classes/Keyboard";
+import store from 'store';
 import mouse, {ENUMS as MOUSE_ENUMS} from './classes/Mouse';
 import utils from 'threejs-utils';
-import {NEIGHBORHOOD} from './constants/config';
-import Terrain from './classes/Terrain';
-import Box from './classes/units/Box';
-import AnimationManager, {Animation, Keyframe, UPDATE_VECTOR3} from './classes/animationManager/AnimationManager';
+import AnimationManager, {Animation, Keyframe, UPDATE_VECTOR3, UPDATE_NUMBER, ENUMS as ANIMATION_ENUMS} from './classes/animationManager/AnimationManager';
+import {TestMap, Plane} from 'maps/maps';
+import {IronCat} from 'units/IronCat';
 
-const animationManager = new AnimationManager();
-const gui = new utils.dat.GUI();
-const {PI} = Math;
+// todo: remove it
+import grass from 'resources/terrain/grass.jpg';
+import ground from 'resources/terrain/ground.jpg';
+import snow from 'resources/terrain/snow.jpg';
+import sand from 'resources/terrain/sand.jpg';
+import blend from 'resources/blendMap.png';
+import b_sand from 'resources/terrain/b_sand.jpg';
+import {normalizeAngle} from './utils/utils';
 
+const scene = new THREE.Scene();
+let uniforms = {
+  time:       { value: 1.0 },
+  resolution: { value: new THREE.Vector2() },
+  tex1: {value: new THREE.TextureLoader().load(grass)},
+  tex2: {value: new THREE.TextureLoader().load(ground)},
+  tex3: {value: new THREE.TextureLoader().load(snow)},
+  tex4: {value: new THREE.TextureLoader().load(sand)},
+  blend: {value: new THREE.TextureLoader().load(blend)},
+};
+
+const renderer = new THREE.WebGLRenderer({antialias: true});
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000000);
+
+let previousTimestamp = 0;
 let terrain = null;
 let unit = null;
-let skyBox = null;
+let testMap = null;
+const cameraPosition = new THREE.Vector3();
+const stats = new Stats();
+const animationManager = new AnimationManager();
+const gui = new utils.dat.GUI();
+
+function loadMap() {
+  testMap = new Plane({renderer, camera});
+  testMap.onLoad(() => {
+    // unit = new Box(10);
+    // testMap.scene.add(unit.mesh);
+
+    new IronCat().onLoad(ironCat => {
+      unit = ironCat;
+      testMap.scene.add(ironCat.mesh);
+      testMap.addToUpdate(ironCat);
+      // for (let i = 0; i < 1000; i++) {
+      //   let mesh = ironCat.mesh.clone();
+      //   mesh.position.x = Math.random() * 1024 - 512;
+      //   mesh.position.z = Math.random() * 1024 - 512;
+      //   testMap.scene.add(mesh);
+      //   // testMap.addToUpdate(ironCat);
+      // }
+    });
+
+
+    // THREE.OBJMTLLoader.load(tankOBJ, tankMTL, 'resources/tank2/').then(mesh => {
+    //   unit = {mesh};
+    //   testMap.scene.add(mesh);
+    //   let i = 200;
+    //   while (i--) {
+    //     testMap.scene.add(mesh.clone());
+    //   }
+    // });
+
+    console.log('loaded');
+    init();
+  });
+}
+loadMap();
+
+
+
+(() => {
+
+  const vertexShader = [
+    'varying vec2 vUv;',
+    'void main()',
+    '{',
+    'vUv = uv;',
+    'vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );',
+    'gl_Position = projectionMatrix * mvPosition;',
+    '}',
+  ].join('\n');
+
+  const fragmentShader = [
+    // 'uniform float time;',
+    'uniform sampler2D tex1;',
+    'uniform sampler2D tex2;',
+    'uniform sampler2D tex3;',
+    'uniform sampler2D tex4;',
+    'uniform sampler2D blend;',
+    // 'uniform vec2 resolution;',
+    'varying vec2 vUv;',
+    'void main( void ) {',
+    'vec2 uv = vUv * 4.0;',
+    'uv = vec2(mod(uv.x, 1.0), mod(uv.y, 1.0));',
+    // '	vec2 position = -1.0 + 2.0 * vUv;',
+    // '	float red = abs( sin( position.x * position.y + time / 7.0 ) );',
+    // '	float green = abs( sin( position.x * position.y + time / 5.0 ) );',
+    // '	float blue = abs( sin( position.x * position.y + time / 2.0 ) );',
+    // '	gl_FragColor = vec4( red, green, blue, 1.0 );',
+    ' vec4 b = texture2D(blend, vUv);',
+    ' float coefficient = 1. / (b.r + b.g + b.b + (1.0 - b.a));',
+    ' vec3 t1 = texture2D(tex1, uv).rgb;',
+    ' t1 = vec3(t1.rgb * (b.g * coefficient));',
+    ' vec3 t2 = texture2D(tex2, uv).rgb;',
+    ' t2 = vec3(t2.rgb * (b.b * coefficient));',
+    ' vec3 t3 = texture2D(tex3, uv).rgb;',
+    ' t3 = vec3(t3.rgb * (b.r * coefficient));',
+    ' vec3 t4 = texture2D(tex4, uv).rgb;',
+    ' t4 = vec3(t4.rgb * ((1.0 - b.a) * coefficient));',
+    '	gl_FragColor = vec4(t1 + t2 + t3 + t4, 1.0);',
+    '}'
+  ].join('\n');
+
+  // let material = new THREE.ShaderMaterial( {
+  //   uniforms,
+  //   vertexShader,
+  //   fragmentShader
+  // } );
+
+  let material = new THREE.MeshPhongMaterial({
+    map: new THREE.TextureLoader().load(sand),
+    bumpMap: new THREE.TextureLoader().load(b_sand),
+    bumpSize: 3
+  });
+
+  scene.background = new THREE.Color(0x555555);
+
+  const geometry = new THREE.Geometry();
+  const size = 100;
+  geometry.vertices.push(
+    new THREE.Vector3(-size, size, 0),
+    new THREE.Vector3(size, size, 0),
+    new THREE.Vector3(-size, -size, 0),
+    new THREE.Vector3(size, -size, 0)
+  );
+  geometry.faces.push(
+    new THREE.Face3(2, 1, 0),
+    new THREE.Face3(2, 3, 1)
+  );
+  geometry.computeVertexNormals();
+  geometry.faceVertexUvs[0] = [[
+    new THREE.Vector2(0, 0),
+    new THREE.Vector2(1, 1),
+    new THREE.Vector2(0, 1)
+  ], [
+    new THREE.Vector2(0, 0),
+    new THREE.Vector2(1, 0),
+    new THREE.Vector2(1, 1)
+  ]];
+
+  geometry.faceVertexUvs[1] = [[
+    new THREE.Vector2(0, 0),
+    new THREE.Vector2(1, 1),
+    new THREE.Vector2(0, 1)
+  ], [
+    new THREE.Vector2(0, 0),
+    new THREE.Vector2(1, 0),
+    new THREE.Vector2(1, 1)
+  ]];
+
+  const geometry2 = new THREE.CubeGeometry(size, size, size);
+
+
+  const plane = new THREE.Mesh(
+    geometry,
+      /*new THREE.MeshStandardMaterial({
+        // opacity: .5,
+        // blending: THREE.AdditiveBlending,
+        color: 0xff
+        // map: new THREE.TextureLoader().load(tex)
+      }),*/
+      [material]
+  );
+  // plane.material[0].transparent = true;
+  // plane.material[1].transparent = true;
+  scene.add(plane);
+  scene.add(new THREE.AmbientLight(0xffffff, 1));
+  init();
+});
+
+
+const cameraData = store.get('cameraData') || {
+  theta: Math.PI / 2 + Math.PI / 32,
+  phi: Math.PI / 24,
+  radius: 500
+};
+
+
 // const config = {
 //     neighborhood: NEIGHBORHOOD.VON_NEUMANN,
 //     map: 'map',
@@ -63,42 +231,77 @@ let skyBox = null;
 // ).onChange(() => init(lastTexture));
 // gui.add(config, 'upload');
 
-const config = {
-  upload: () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.addEventListener('change', () => {
-      if (input.files.length) {
-        const reader = new FileReader();
-        reader.onload = e => {
-          init(e.target.result);
-        };
-        reader.readAsDataURL(input.files[0]);
-      }
-    });
-    input.click();
-  }
-};
-gui.add(config, 'upload');
+// const config = {
+//   upload: () => {
+//     const input = document.createElement('input');
+//     input.type = 'file';
+//     input.addEventListener('change', () => {
+//       if (input.files.length) {
+//         const reader = new FileReader();
+//         reader.onload = e => {
+//           init(e.target.result);
+//         };
+//         reader.readAsDataURL(input.files[0]);
+//       }
+//     });
+//     input.click();
+//   }
+// };
+// gui.add(config, 'upload');
 
 let animateUnit = function () {
-  const path = terrain.findPath(unit.mesh.position, getPosition(event));
+
+  // todo: make it look better
+  const speed = 100;
+  const path = testMap._terrain.findPath(unit.mesh.position, getPosition(event));
 
   if (path.length) {
-    const keyframes = map(path, position => new Keyframe({position}));
+    let keyframes = [];
+    let angle = null;
+
+    for (let i = 0; i < path.length; i++) {
+      path[i].y = unit.mesh.position.y;
+      if (i < path.length - 1) {
+        if (i === 0) {
+          angle = path[i].angleTo(path[i + 1]);
+        } else {
+          // const spin = Math.PI * 2;
+          const newAngle = path[i].angleTo(path[i + 1]);
+          const normalizedAngle = normalizeAngle(angle);
+          const delta = newAngle - normalizedAngle;
+          const abs = Math.abs(delta);
+          if (abs > Math.PI) {
+            angle -= -Math.PI * 2 - delta;
+          } else {
+            angle += delta
+          }
+        }
+        keyframes.push(new Keyframe({
+          position: path[i],
+          'rotation.y': -angle
+        }));
+      } else {
+
+      }
+    }
+    // const keyframes = map(path, position => {
+    //   position.y = unit.mesh.position.y;
+    //   return new Keyframe({position});
+    // });
 
     if (unit.animation) {
       animationManager.remove(unit.animation);
     }
     unit.animation = new Animation({
       target: unit.mesh,
-      duration: 20 * path.length,
+      duration: speed * path.length,
       keyframes,
       updateFunctions: {
-        position: UPDATE_VECTOR3
+        position: UPDATE_VECTOR3,
+        'rotation.y': UPDATE_NUMBER
       }
     });
-    console.log(terrain.getClosest(getPosition(event)));
+    // console.log(terrain.getClosest(getPosition(event)));
     animationManager.animate(unit.animation);
   }
 };
@@ -110,6 +313,9 @@ let animateUnit = function () {
     switch (e.button) {
       case MAIN:
         moveEnabled = false;
+        break;
+      case MIDDLE:
+        unit.setTarget({position: getPosition(e)});
         break;
       case SECOND:
         rotationEnabled = false;
@@ -134,66 +340,22 @@ let animateUnit = function () {
   mouse.subscribe(WHEEL, scale);
 })();
 
-const renderer = new THREE.WebGLRenderer({antialias: true});
-//const camera = window.camera = new THREE.CinematicCamera(45, window.innerWidth / window.innerHeight, 1, 1000000);
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000000);
-const scene = new THREE.Scene();
-const aLight = new THREE.AmbientLight(0xffffff, 1);
-const dLight = new THREE.DirectionalLight(0xffffff, 1);
-const cubeGeometry = new THREE.CubeGeometry(1, 1, 1);
-
-dLight.position.set(-1, 1, -1);
-//camera.setLens(10);
-
-//scene.fog = new THREE.FogExp2(0x666666, 0.001);
-// scene.add(aLight);
-scene.add(dLight);
-
-let previousTimestamp = 0;
-let subScene = null;
-
-let previousEvent;
-const target = new THREE.Vector3(0, 0, 0);
+let target = new THREE.Vector3(0, 0, 0);
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-
-const cubemapImages = [right, left, top, bottom, front, back];
-//scene.background = new THREE.CubeTextureLoader().load(cubemapImages);
 
 renderer.setClearColor(0x222222);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-render(previousTimestamp);
-
-
-const cube = new THREE.Mesh(
-  new THREE.CubeGeometry(2, 2, 2),
-  new THREE.MeshStandardMaterial({color: 0xff})
-);
-//scene.add(cube);
-
-
-let center = new THREE.Vector3();
-camera.position.y = 1500;
-camera.lookAt(center);
-
-let theta = -Math.PI / 2 + Math.PI / 8,
-    phi   = -Math.PI / 2;
-let rotationEnabled = false,
-    moveEnabled     = false,
-    radius          = 700;
+let rotationEnabled = false;
+let moveEnabled = false;
 mouseUpdate({delta: {x: 0, y: 0}});
 
-
-init(heightMapData);
-
-// loadImage(textures[config.map], init);
-
-function scale({y}) {
-  radius = (radius + y / 10).fitToRange(1, Infinity);
-  mouseUpdate({delta: {x: 0, y: 0}});
+function scale(e, {y}) {
+  cameraData.radius = (cameraData.radius + y / 10).fitToRange(1, Infinity);
+  mouseUpdate({e, delta: {x: 0, y: 0}});
 }
 
 function getPosition(event) {
@@ -228,311 +390,246 @@ function mouseUpdate({event, delta: {x, y}}) {
   }
 
   if (rotationEnabled) {
-    theta = (theta + y / 500).fitToRange(-Math.PI / 2 + limit, -limit);
-    phi += x / 500;
+    cameraData.theta = (cameraData.theta - y / 500).fitToRange(limit, Math.PI / 2 - limit);
+    cameraData.phi += x / 500;
   }
 
   // Turn back into Cartesian coordinates
-  position.x = radius * Math.sin(theta) * Math.cos(phi);
-  position.z = radius * Math.sin(theta) * Math.sin(phi);
-  position.y = radius * Math.cos(theta);
+  cameraPosition.x = cameraData.radius * Math.sin(cameraData.theta) * Math.cos(cameraData.phi);
+  cameraPosition.z = cameraData.radius * Math.sin(cameraData.theta) * Math.sin(cameraData.phi);
+  cameraPosition.y = cameraData.radius * Math.cos(cameraData.theta);
 
-  position.add(target);
+  // skyBox && skyBox.position.copy(position);
 
-  camera.position.copy(position);
-  camera.lookAt(target);
+  store.set('cameraData', cameraData);
 
-  skyBox && skyBox.position.copy(position);
-
-  if (event) {
-    previousEvent = event;
-  }
+  // if (event) {
+  //   previousEvent = event;
+  // }
 }
 
-function init(heightMapUrl) {
-  if (subScene) {
-    scene.remove(subScene);
-  }
-  subScene = new THREE.Group();
-  scene.add(subScene);
-  // createMap(mapImage);
-  //lastTexture = mapImage;
+//
+// function createMap(mapImage) {
+//   const map = parseMap(mapImage);
+//   const planeMaterial = new THREE.MeshPhongMaterial({
+//     map: new THREE.CanvasTexture(map.canvas),
+//   });
+//   planeMaterial.map.minFilter = THREE.NearestFilter;
+//   planeMaterial.map.magFilter = THREE.NearestFilter;
+//
+//   const plane = new THREE.Mesh(
+//     new THREE.PlaneGeometry(mapImage.width, mapImage.height),
+//     planeMaterial
+//   );
+//
+//   plane.receiveShadow = true;
+//   plane.rotation.x = -PI / 2;
+//   subScene.add(plane);
+// }
+//
+// function parseMap(image) {
+//   let start = null;
+//   let end = null;
+//
+//   const canvas = document.createElement('canvas');
+//   const contex = canvas.getContext('2d');
+//   canvas.width = image.width;
+//   canvas.height = image.height;
+//   contex.drawImage(image, 0, 0, canvas.width, canvas.height);
+//
+//   const imageData = contex.getImageData(0, 0, canvas.width, canvas.height);
+//   const imageDataSize = canvas.width * canvas.height * 4;
+//   const field = [];
+//   const colors = [];
+//   for (let i = 0; i < imageDataSize; i += 4) {
+//     const x = i / 4 % canvas.width;
+//     const y = i / 4 / canvas.width | 0;
+//
+//     if (!field[y]) {
+//       field[y] = [];
+//       colors[y] = [];
+//     }
+//     if (!start && (imageData.data[i + 1] > 200) && (imageData.data[i] + imageData.data[i + 2] < 200)) {
+//       start = {x, y};
+//     }
+//     if (!end && imageData.data[i] > 200 && imageData.data[i + 1] + imageData.data[i + 2] < 200) {
+//       end = {x, y};
+//     }
+//     field[y][x] = imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2] === 765 ? 1 : 0;
+//     colors[y][x] = (imageData.data[i] << 16) | (imageData.data[i + 1] << 8) | (imageData.data[i + 2])
+//   }
+//
+//   if (!start) start = {x: 0, y: 0};
+//   if (!end) end = {x: image.width - 1, y: image.height - 1};
+//   field[end.y][end.x] = 2;
+//
+//   const path = findPath(field, start, setPixel);
+//
+//   path.forEach(({x, y}) => {
+//     setPixel(x, y, [255, 0, 0, 1]);
+//   });
+//
+//   function setPixel(x, y, color) {
+//     const offset = (canvas.width * y + x) * 4;
+//     color.forEach((item, index) => {
+//       imageData.data[offset + index] = color[index];
+//     });
+//   }
+//
+//   contex.putImageData(imageData, 0, 0);
+//
+//   return {canvas, field, colors};
+//
+// }
+//
+// function createScene(width, height, field, colors) {
+//   const maxHeight = 10;
+//   const halfWidth = width / 2;
+//   const halfHeight = height / 2;
+//   field.forEach((row, y) => {
+//     const offsetY = y + .5;
+//
+//     row.forEach((cell, x) => {
+//       const offsetX = x + .5;
+//
+//       if (cell === 0) {
+//         let cube = new THREE.Mesh(
+//           cubeGeometry,
+//           new THREE.MeshStandardMaterial({color: colors[y][x]})
+//         );
+//         const percent = 1 - ((colors[y][x] >> 16) + ((colors[y][x] & 0xff00) >> 8) + (colors[y][x] & 0xff)) / (255 * 3);
+//         cube.position.set(offsetX - halfWidth, maxHeight * percent / 2, offsetY - halfHeight);
+//         cube.scale.y = maxHeight * percent;
+//         subScene.add(cube);
+//       }
+//     });
+//   });
+// }
+// function findPath(field, start, setPixel) {
+//
+//   let result = [];
+//   let pathField = [];
+//   let positions = [start];
+//   let value = 1;
+//   let pathFound = false;
+//   let end = null;
+//   let offsets = [
+//     [-1, 0], [0, 1], [1, 0], [0, -1]
+//   ];
+//   if (config.neighborhood === NEIGHBORHOOD.MOORE) {
+//     offsets.push([-1, 1], [1, 1], [1, -1], [-1, -1])
+//   }
+//
+//   pathField[start.y] = [];
+//   pathField[start.y][start.x] = 0;
+//
+//   while (true) {
+//     const color = [Math.random() * 255 | 0, Math.random() * 255 | 0, Math.random() * 255 | 0, 1];
+//     const nextWavePositions = [];
+//
+//     for (let pos = 0; pos < positions.length; pos++) {
+//       const {x, y} = positions[pos];
+//
+//       for (let index = 0; index < offsets.length; index++) {
+//         let {0: i, 1: j} = offsets[index];
+//         i += x;
+//         j += y;
+//
+//         if (field[j] && field[j][i]) {
+//           if (field[j][i] === 2) {
+//             end = {x: i, y: j, value};
+//             break;
+//           } else {
+//             if (!pathField[j]) {
+//               pathField[j] = [];
+//             }
+//             if (pathField[j][i] === undefined) {
+//               pathField[j][i] = value;
+//               // setPixel(i, j, color);
+//               nextWavePositions.push({x: i, y: j});
+//             }
+//           }
+//         }
+//       }
+//     }
+//     if (end || nextWavePositions.length === 0) {
+//       break;
+//     } else {
+//       positions = nextWavePositions;
+//       value++;
+//     }
+//   }
+//
+//   if (end) {
+//     let {x, y, value} = end;
+//
+//     while (!pathFound) {
+//       result.push({x, y});
+//
+//       if (value-- === 0) break;
+//
+//       for (let index = 0; index < offsets.length; index++) {
+//         let {0: i, 1: j} = offsets[index];
+//         i += x;
+//         j += y;
+//         if (pathField[j] && pathField[j][i] === value) {
+//           x = i;
+//           y = j;
+//           break;
+//         }
+//       }
+//     }
+//   }
+//
+//   return result;
+// }
 
-  terrain = new Terrain({
-    heightMapUrl,
-    textureMapUrl,
-    normalMapUrl,
-    waterNormalsMapUrl
-  }, {
-    renderer,
-    camera,
-    fog: scene.fog,
-    light: dLight
-  }, 1024, 128, 1024, mesh => {
-    subScene.add(mesh);
+
+function init() {
+  addEventListener('resize', () => {
+    const SCREEN_WIDTH = window.innerWidth;
+    const SCREEN_HEIGHT = window.innerHeight;
+    renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+    camera.aspect = SCREEN_WIDTH / SCREEN_HEIGHT;
+    camera.updateProjectionMatrix();
   });
-
-
-  unit = new Box(3);
-  unit.mesh.position.add(new THREE.Vector3(-30, 0, 0));
-  subScene.add(unit.mesh);
-
-  var cubeShader = THREE.ShaderLib[ 'cube' ];
-  cubeShader.uniforms[ 'tCube' ].value = new THREE.CubeTextureLoader().load(cubemapImages);
-  var skyBoxMaterial = new THREE.ShaderMaterial( {
-    fragmentShader: cubeShader.fragmentShader,
-    vertexShader: cubeShader.vertexShader,
-    uniforms: cubeShader.uniforms,
-    depthWrite: false,
-    side: THREE.BackSide
-  } );
-  skyBox = new THREE.Mesh(
-    new THREE.BoxGeometry(100000, 100000, 100000),
-    skyBoxMaterial
-  );
-  subScene.add(skyBox);
-
-
-
-
-
-
-
-  var effectController  = {
-    focalLength: 36,
-    // jsDepthCalculation: true,
-    // shaderFocus: true,
-    //
-    fstop: 512,
-     //maxblur: 1.0,
-    //
-    showFocus: !true,
-    focalDepth: 512,
-    // manualdof: false,
-    // vignetting: false,
-    // depthblur: false,
-    //
-    // threshold: 0.5,
-    // gain: 2.0,
-    // bias: 0.5,
-    // fringe: 0.7,
-    //
-    // focalLength: 35,
-    // noise: true,
-    // pentagon: false,
-    //
-    // dithering: 0.0001
-  };
-  var matChanger = function( ) {
-    for (var e in effectController) {
-      if (e in camera.postprocessing.bokeh_uniforms)
-        camera.postprocessing.bokeh_uniforms[ e ].value = effectController[ e ];
-    }
-    camera.postprocessing.bokeh_uniforms[ 'znear' ].value = camera.near;
-    camera.postprocessing.bokeh_uniforms[ 'zfar' ].value = camera.far;
-    camera.setLens(effectController.focalLength, camera.frameHeight ,effectController.fstop, camera.coc);
-    effectController['focalDepth'] = camera.postprocessing.bokeh_uniforms["focalDepth"].value;
-  };
-  //matChanger();
-
+  addStats();
+  render(previousTimestamp);
 }
 
-function createMap(mapImage) {
-  const map = parseMap(mapImage);
-  const planeMaterial = new THREE.MeshPhongMaterial({
-    map: new THREE.CanvasTexture(map.canvas),
-  });
-  planeMaterial.map.minFilter = THREE.NearestFilter;
-  planeMaterial.map.magFilter = THREE.NearestFilter;
+function addStats() {
+  stats.setMode(0); // 0: fps, 1: ms
 
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(mapImage.width, mapImage.height),
-    planeMaterial
-  );
+// Align top-left
+  stats.domElement.style.position = 'absolute';
+  stats.domElement.style.left = '0px';
+  stats.domElement.style.top = '0px';
 
-  plane.receiveShadow = true;
-  plane.rotation.x = -PI / 2;
-  subScene.add(plane);
-
-  if (config.terrain) {
-    createScene(mapImage.width, mapImage.height, map.field, map.colors);
-  }
+  document.body.appendChild( stats.domElement );
 }
-
-function parseMap(image) {
-  let start = null;
-  let end = null;
-
-  const canvas = document.createElement('canvas');
-  const contex = canvas.getContext('2d');
-  canvas.width = image.width;
-  canvas.height = image.height;
-  contex.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-  const imageData = contex.getImageData(0, 0, canvas.width, canvas.height);
-  const imageDataSize = canvas.width * canvas.height * 4;
-  const field = [];
-  const colors = [];
-  for (let i = 0; i < imageDataSize; i += 4) {
-    const x = i / 4 % canvas.width;
-    const y = i / 4 / canvas.width | 0;
-
-    if (!field[y]) {
-      field[y] = [];
-      colors[y] = [];
-    }
-    if (!start && (imageData.data[i + 1] > 200) && (imageData.data[i] + imageData.data[i + 2] < 200)) {
-      start = {x, y};
-    }
-    if (!end && imageData.data[i] > 200 && imageData.data[i + 1] + imageData.data[i + 2] < 200) {
-      end = {x, y};
-    }
-    field[y][x] = imageData.data[i] + imageData.data[i + 1] + imageData.data[i + 2] === 765 ? 1 : 0;
-    colors[y][x] = (imageData.data[i] << 16) | (imageData.data[i + 1] << 8) | (imageData.data[i + 2])
-  }
-
-  if (!start) start = {x: 0, y: 0};
-  if (!end) end = {x: image.width - 1, y: image.height - 1};
-  field[end.y][end.x] = 2;
-
-  const path = findPath(field, start, setPixel);
-
-  path.forEach(({x, y}) => {
-    setPixel(x, y, [255, 0, 0, 1]);
-  });
-
-  function setPixel(x, y, color) {
-    const offset = (canvas.width * y + x) * 4;
-    color.forEach((item, index) => {
-      imageData.data[offset + index] = color[index];
-    });
-  }
-
-  contex.putImageData(imageData, 0, 0);
-
-  return {canvas, field, colors};
-
-}
-
-function createScene(width, height, field, colors) {
-  const maxHeight = 10;
-  const halfWidth = width / 2;
-  const halfHeight = height / 2;
-  field.forEach((row, y) => {
-    const offsetY = y + .5;
-
-    row.forEach((cell, x) => {
-      const offsetX = x + .5;
-
-      if (cell === 0) {
-        let cube = new THREE.Mesh(
-          cubeGeometry,
-          new THREE.MeshStandardMaterial({color: colors[y][x]})
-        );
-        const percent = 1 - ((colors[y][x] >> 16) + ((colors[y][x] & 0xff00) >> 8) + (colors[y][x] & 0xff)) / (255 * 3);
-        cube.position.set(offsetX - halfWidth, maxHeight * percent / 2, offsetY - halfHeight);
-        cube.scale.y = maxHeight * percent;
-        subScene.add(cube);
-      }
-    });
-  });
-}
-
-function findPath(field, start, setPixel) {
-
-  let result = [];
-  let pathField = [];
-  let positions = [start];
-  let value = 1;
-  let pathFound = false;
-  let end = null;
-  let offsets = [
-    [-1, 0], [0, 1], [1, 0], [0, -1]
-  ];
-  if (config.neighborhood === NEIGHBORHOOD.MOORE) {
-    offsets.push([-1, 1], [1, 1], [1, -1], [-1, -1])
-  }
-
-  pathField[start.y] = [];
-  pathField[start.y][start.x] = 0;
-
-  while (true) {
-    const color = [Math.random() * 255 | 0, Math.random() * 255 | 0, Math.random() * 255 | 0, 1];
-    const nextWavePositions = [];
-
-    for (let pos = 0; pos < positions.length; pos++) {
-      const {x, y} = positions[pos];
-
-      for (let index = 0; index < offsets.length; index++) {
-        let {0: i, 1: j} = offsets[index];
-        i += x;
-        j += y;
-
-        if (field[j] && field[j][i]) {
-          if (field[j][i] === 2) {
-            end = {x: i, y: j, value};
-            break;
-          } else {
-            if (!pathField[j]) {
-              pathField[j] = [];
-            }
-            if (pathField[j][i] === undefined) {
-              pathField[j][i] = value;
-              // setPixel(i, j, color);
-              nextWavePositions.push({x: i, y: j});
-            }
-          }
-        }
-      }
-    }
-    if (end || nextWavePositions.length === 0) {
-      break;
-    } else {
-      positions = nextWavePositions;
-      value++;
-    }
-  }
-
-  if (end) {
-    let {x, y, value} = end;
-
-    while (!pathFound) {
-      result.push({x, y});
-
-      if (value-- === 0) break;
-
-      for (let index = 0; index < offsets.length; index++) {
-        let {0: i, 1: j} = offsets[index];
-        i += x;
-        j += y;
-        if (pathField[j] && pathField[j][i] === value) {
-          x = i;
-          y = j;
-          break;
-        }
-      }
-    }
-  }
-
-  return result;
-}
-
 
 function render(timestamp) {
   const delta = timestamp - previousTimestamp;
   previousTimestamp = timestamp;
+
+  stats.begin();
+
   animationManager.update(delta);
 
-
-  camera.updateMatrixWorld();
   requestAnimationFrame(render);
-  terrain && terrain.render();
 
-  renderer.render(scene, camera);
+  // todo: remove it
+  uniforms.time.value += 0.05;
 
-  //if(camera.postprocessing.enabled){
-  //  //rendering Cinematic Camera effects
-  //  camera.renderCinematic(scene, renderer);
-  //}
+  if (testMap) {
+    testMap.render(delta);
+    renderer.render(testMap.scene, camera);
+  } else {
+    renderer.render(scene, camera);
+  }
 
+  camera.position.copy(cameraPosition).add(target);
+  camera.lookAt(target);
+
+  stats.end();
 }
