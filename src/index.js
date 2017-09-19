@@ -15,7 +15,7 @@ import ground from 'resources/terrain/ground.jpg';
 import snow from 'resources/terrain/snow.jpg';
 import sand from 'resources/terrain/sand.jpg';
 import blend from 'resources/blendMap.png';
-import b_sand from 'resources/terrain/b_sand.jpg';
+// import b_sand from 'resources/terrain/b_sand.jpg';
 import {normalizeAngle} from './utils/utils';
 
 const scene = new THREE.Scene();
@@ -129,7 +129,7 @@ loadMap();
 
   let material = new THREE.MeshPhongMaterial({
     map: new THREE.TextureLoader().load(sand),
-    bumpMap: new THREE.TextureLoader().load(b_sand),
+    // bumpMap: new THREE.TextureLoader().load(b_sand),
     bumpSize: 3
   });
 
