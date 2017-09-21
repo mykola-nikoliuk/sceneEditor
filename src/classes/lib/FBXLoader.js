@@ -59,9 +59,7 @@ export default THREE => {
 
           try {
 
-            var scene = self.parse(buffer, resourceDirectory);
-
-            onLoad(scene);
+            self.parse(buffer, resourceDirectory).then(onLoad);
 
           } catch (error) {
 
@@ -85,45 +83,50 @@ export default THREE => {
        * of the different animations within the FBX file.
        * @param {ArrayBuffer} FBXBuffer - Contents of FBX file to parse.
        * @param {string} resourceDirectory - Directory to load external assets (e.g. textures ) from.
-       * @returns {THREE.Group}
+       * @returns {Promise<THREE.Group>}
        */
       parse: function (FBXBuffer, resourceDirectory) {
 
-        var FBXTree;
+        return new Promise(resolve => {
 
-        if (isFbxFormatBinary(FBXBuffer)) {
+          var FBXTree;
 
-          FBXTree = new BinaryParser().parse(FBXBuffer);
+          if (isFbxFormatBinary(FBXBuffer)) {
 
-        } else {
+            FBXTree = new BinaryParser().parse(FBXBuffer);
 
-          var FBXText = convertArrayBufferToString(FBXBuffer);
+          } else {
 
-          if (!isFbxFormatASCII(FBXText)) {
+            var FBXText = convertArrayBufferToString(FBXBuffer);
 
-            throw new Error('THREE.FBXLoader: Unknown format.');
+            if (!isFbxFormatASCII(FBXText)) {
+
+              throw new Error('THREE.FBXLoader: Unknown format.');
+
+            }
+
+            if (getFbxVersion(FBXText) < 7000) {
+
+              throw new Error('THREE.FBXLoader: FBX version not supported, FileVersion: ' + getFbxVersion(FBXText));
+
+            }
+
+            FBXTree = new TextParser().parse(FBXText);
 
           }
 
-          if (getFbxVersion(FBXText) < 7000) {
+          var connections = parseConnections(FBXTree);
+          var images = parseImages(FBXTree);
+          parseTextures(FBXTree, new THREE.TextureLoader(this.manager).setPath(resourceDirectory), images, connections)
+            .then(textures => {
+              var materials = parseMaterials(FBXTree, textures, connections);
+              var deformers = parseDeformers(FBXTree, connections);
+              var geometryMap = parseGeometries(FBXTree, connections, deformers);
+              var sceneGraph = parseScene(FBXTree, connections, deformers, geometryMap, materials);
 
-            throw new Error('THREE.FBXLoader: FBX version not supported, FileVersion: ' + getFbxVersion(FBXText));
-
-          }
-
-          FBXTree = new TextParser().parse(FBXText);
-
-        }
-
-        var connections = parseConnections(FBXTree);
-        var images = parseImages(FBXTree);
-        var textures = parseTextures(FBXTree, new THREE.TextureLoader(this.manager).setPath(resourceDirectory), images, connections);
-        var materials = parseMaterials(FBXTree, textures, connections);
-        var deformers = parseDeformers(FBXTree, connections);
-        var geometryMap = parseGeometries(FBXTree, connections, deformers);
-        var sceneGraph = parseScene(FBXTree, connections, deformers, geometryMap, materials);
-
-        return sceneGraph;
+              resolve(sceneGraph);
+            });
+        });
 
       }
 
@@ -279,29 +282,40 @@ export default THREE => {
      * @param {THREE.TextureLoader} loader
      * @param {Map<number, string(image blob/data URL)>} imageMap
      * @param {Map<number, {parents: {ID: number, relationship: string}[], children: {ID: number, relationship: string}[]}>} connections
-     * @returns {Map<number, THREE.Texture>}
+     * @returns {Promise<Map<number, THREE.Texture>>}
      */
     function parseTextures(FBXTree, loader, imageMap, connections) {
 
-      /**
-       * @type {Map<number, THREE.Texture>}
-       */
-      var textureMap = new Map();
+      return new Promise(resolve => {
+        /**
+         * @type {Map<number, THREE.Texture>}
+         */
+        var textureMap = new Map();
 
-      if ('Texture' in FBXTree.Objects.subNodes) {
+        if ('Texture' in FBXTree.Objects.subNodes) {
 
-        var textureNodes = FBXTree.Objects.subNodes.Texture;
-        for (var nodeID in textureNodes) {
+          var textureNodes = FBXTree.Objects.subNodes.Texture;
+          var textureKeys = Object.keys(textureNodes);
 
-          var texture = parseTexture(textureNodes[nodeID], loader, imageMap, connections);
-          textureMap.set(parseInt(nodeID), texture);
+          function nextTexture() {
+            return new Promise(resolve => {
+              if (textureKeys.length === 0) {
+                resolve(textureMap);
+              } else {
+                const textureKey = textureKeys.pop();
+                const textureNode = textureNodes[textureKey];
+                parseTexture(textureNode, loader, imageMap, connections)
+                  .then(texture => {
+                    textureMap.set(parseInt(textureKey), texture);
+                    nextTexture().then(resolve);
+                  });
+              }
+            });
+          }
 
+          nextTexture().then(resolve);
         }
-
-      }
-
-      return textureMap;
-
+      });
     }
 
     /**
@@ -309,79 +323,81 @@ export default THREE => {
      * @param {THREE.TextureLoader} loader
      * @param {Map<number, string(image blob/data URL)>} imageMap
      * @param {Map<number, {parents: {ID: number, relationship: string}[], children: {ID: number, relationship: string}[]}>} connections
-     * @returns {THREE.Texture}
+     * @returns {Promise<THREE.Texture>}
      */
     function parseTexture(textureNode, loader, imageMap, connections) {
 
-      var FBX_ID = textureNode.id;
+      return new Promise(resolve => {
+        var FBX_ID = textureNode.id;
 
-      var name = textureNode.name;
+        var name = textureNode.name;
 
-      var fileName;
+        var fileName;
 
-      var filePath = textureNode.properties.FileName;
-      var relativeFilePath = textureNode.properties.RelativeFilename;
+        var filePath = textureNode.properties.FileName;
+        var relativeFilePath = textureNode.properties.RelativeFilename;
 
-      var children = connections.get(FBX_ID).children;
+        var children = connections.get(FBX_ID).children;
 
-      if (children !== undefined && children.length > 0 && imageMap.has(children[0].ID)) {
+        if (children !== undefined && children.length > 0 && imageMap.has(children[0].ID)) {
 
-        fileName = imageMap.get(children[0].ID);
+          fileName = imageMap.get(children[0].ID);
 
-      } else if (relativeFilePath !== undefined && relativeFilePath[0] !== '/' &&
-        relativeFilePath.match(/^[a-zA-Z]:/) === null) {
+        } else if (relativeFilePath !== undefined && relativeFilePath[0] !== '/' &&
+          relativeFilePath.match(/^[a-zA-Z]:/) === null) {
 
-        // use textureNode.properties.RelativeFilename
-        // if it exists and it doesn't seem an absolute path
+          // use textureNode.properties.RelativeFilename
+          // if it exists and it doesn't seem an absolute path
 
-        fileName = relativeFilePath;
-
-      } else {
-
-        var split = filePath.split(/[\\\/]/);
-
-        if (split.length > 0) {
-
-          fileName = split[split.length - 1];
+          fileName = relativeFilePath;
 
         } else {
 
-          fileName = filePath;
+          var split = filePath.split(/[\\\/]/);
+
+          if (split.length > 0) {
+
+            fileName = split[split.length - 1];
+
+          } else {
+
+            fileName = filePath;
+
+          }
 
         }
 
-      }
+        var currentPath = loader.path;
 
-      var currentPath = loader.path;
+        if (fileName.indexOf('blob:') === 0 || fileName.indexOf('data:') === 0) {
 
-      if (fileName.indexOf('blob:') === 0 || fileName.indexOf('data:') === 0) {
+          loader.setPath(undefined);
 
-        loader.setPath(undefined);
+        }
 
-      }
+        /**
+         * @type {THREE.Texture}
+         */
+        var texture = loader.load(fileName, () => {
+          resolve(texture);
+        });
+        texture.name = name;
+        texture.FBX_ID = FBX_ID;
 
-      /**
-       * @type {THREE.Texture}
-       */
-      var texture = loader.load(fileName);
-      texture.name = name;
-      texture.FBX_ID = FBX_ID;
+        var wrapModeU = textureNode.properties.WrapModeU;
+        var wrapModeV = textureNode.properties.WrapModeV;
 
-      var wrapModeU = textureNode.properties.WrapModeU;
-      var wrapModeV = textureNode.properties.WrapModeV;
+        var valueU = wrapModeU !== undefined ? wrapModeU.value : 0;
+        var valueV = wrapModeV !== undefined ? wrapModeV.value : 0;
 
-      var valueU = wrapModeU !== undefined ? wrapModeU.value : 0;
-      var valueV = wrapModeV !== undefined ? wrapModeV.value : 0;
+        // http://download.autodesk.com/us/fbx/SDKdocs/FBX_SDK_Help/files/fbxsdkref/class_k_fbx_texture.html#889640e63e2e681259ea81061b85143a
+        // 0: repeat(default), 1: clamp
 
-      // http://download.autodesk.com/us/fbx/SDKdocs/FBX_SDK_Help/files/fbxsdkref/class_k_fbx_texture.html#889640e63e2e681259ea81061b85143a
-      // 0: repeat(default), 1: clamp
+        texture.wrapS = valueU === 0 ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
+        texture.wrapT = valueV === 0 ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
 
-      texture.wrapS = valueU === 0 ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-      texture.wrapT = valueV === 0 ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
-
-      loader.setPath(currentPath);
-
-      return texture;
+        loader.setPath(currentPath);
+      });
 
     }
 

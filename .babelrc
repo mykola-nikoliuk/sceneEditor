@@ -1,7 +1,7 @@
 {
   "plugins": [
     ["module-resolver", {
-      "root": ["src", "src/classes"],
+      "root": ["src/classes", "src"],
       "alias": {}
     }]
   ]

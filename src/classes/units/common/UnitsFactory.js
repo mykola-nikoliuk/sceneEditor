@@ -1,5 +1,5 @@
 import {IronCat} from '../IronCat'
-import Defer from 'Defer';
+import {Defer} from 'general/Defer';
 
 export const UNITS = {
   IRON_CAT: IronCat
@@ -11,6 +11,10 @@ export class UnitsFactory extends Defer {
     super();
     this._cachedUnits = [];
     this._promise = this._cacheNext(units);
+  }
+
+  get(name) {
+    return this._cachedUnits[name].clone();
   }
 
   /** @param {[Unit]} units */

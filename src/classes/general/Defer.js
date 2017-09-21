@@ -1,6 +1,6 @@
-export default class Defer {
+export class Defer {
   constructor() {
-    this._promise = new Promise(resolve => resolve());
+    this._promise = new Promise(resolve => resolve(this));
   }
 
   onLoad(callback) {

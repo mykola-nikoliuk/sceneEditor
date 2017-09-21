@@ -1,12 +1,12 @@
 import THREE from './lib/three';
 import ImageGrid from './ImageGrid';
 import map from 'lodash/map';
-import Defer from 'Defer';
+import {Defer} from 'general/Defer';
 
 const repeat = 16;
 
 export default class Terrain extends Defer {
-  constructor({heightMapUrl, textureMapUrl}, env, {x: width, y: height, z: depth}, water) {
+  constructor({heightMapUrl, textureMapUrl, normalMapUrl = null}, env, {x: width, y: height, z: depth}, water) {
     super();
 
     this._promise = new Promise(resolve => {
@@ -19,32 +19,41 @@ export default class Terrain extends Defer {
       this._geometry.faceVertexUvs[0] = [];
 
       new THREE.TextureLoader().load(textureMapUrl, map => {
-        map.wrapS = THREE.RepeatWrapping;
-        map.wrapT = THREE.RepeatWrapping;
-        map.repeat.set(repeat, repeat);
+        new THREE.TextureLoader().load(normalMapUrl, normalMap => {
+          map.wrapS =
+            map.wrapT =
+              normalMap.wrapS =
+                normalMap.wrapT = THREE.RepeatWrapping;
+          map.repeat.set(repeat, repeat);
+          normalMap.repeat.set(repeat, repeat);
 
-        const material = new THREE.MeshLambertMaterial({
-          wireframe: false,
-          map: map
-        });
+          const material = new THREE.MeshPhongMaterial({
+            wireframe: false,
+            map: map,
+            normalMap: normalMap,
+            normalScale: new THREE.Vector2(4, 4)
+          });
 
-        this._heightGrid = new ImageGrid(heightMapUrl);
+          this._heightGrid = new ImageGrid(heightMapUrl);
 
-        this._heightGrid.parse(({x, y, color}) => {
-          this._addVertex({x, y, color});
-          if (y && x) {
-            this._addVertexUV({x, y});
-            this._addFaces({x, y})
-          }
-        }).then(() => {
-          this._geometry.computeVertexNormals();
-          this._mesh.add(new THREE.Mesh(this._geometry, material));
+          this._heightGrid.parse(({x, y, color}) => {
+            this._addVertex({x, y, color});
+            if (y && x) {
+              this._addVertexUV({x, y});
+              this._addFaces({x, y})
+            }
+          }).then(() => {
+            this._geometry.computeVertexNormals();
+            const terrainMesh = new THREE.Mesh(this._geometry, material);
+            this._mesh.add(terrainMesh);
+            terrainMesh.receiveShadow = true;
 
-          if (water) {
-            this._addWater(env, water).then(resolve.bind(null, this._mesh));
-          } else {
-            resolve(this._mesh);
-          }
+            if (water) {
+              this._addWater(env, water).then(resolve.bind(null, this._mesh));
+            } else {
+              resolve(this._mesh);
+            }
+          });
         });
       });
     });

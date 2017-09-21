@@ -1,4 +1,4 @@
-import Defer from 'Defer';
+import {Defer} from 'general/Defer';
 
 export default class Mesh extends Defer {
   constructor() {

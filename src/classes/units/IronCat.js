@@ -7,23 +7,20 @@ export class IronCat extends Unit {
     return 'Iron Cat';
   };
 
-  constructor() {
+  constructor(mesh) {
     super();
-    this._promise = new Promise(resolve => {
-      new THREE.FBXLoader().load('resources/tank/tank.FBX', mesh => {
-        const scale = 0.2;
-
-        mesh.position.set(0, 8, 0);
-        mesh.scale.set(scale, scale, scale);
-        mesh.children[0].rotation.y = Math.PI / 2;
-
-        this._mesh = mesh;
-        this._head = mesh.children[0].children[5];
-        this._target = null;
-
-        resolve(this);
-      });
-    });
+    if (mesh) {
+      this._parse(mesh);
+    } else {
+      this._promise = new Promise(resolve => {
+        new THREE.FBXLoader().load('resources/tank/tank.FBX', mesh => {
+          // todo: remove this after model will fix
+          mesh.children[0].rotation.y = Math.PI / 2;
+          this._parse(mesh);
+          resolve(this);
+        });
+      }, e => console.log(e), e => console.log(e));
+    }
   }
 
   setTarget(target) {
@@ -47,5 +44,20 @@ export class IronCat extends Unit {
       }
       this.setHeadAngle(-angle);
     }
+  }
+
+  _parse(mesh) {
+    const scale = 0.2;
+
+    mesh.position.set(0, 8, 0);
+    mesh.scale.set(scale, scale, scale);
+    mesh.children[0].castShadow = true;
+    mesh.children[0].children.forEach(mesh => {
+      mesh.castShadow = true;
+    });
+
+    this._mesh = mesh;
+    this._head = mesh.children[0].children[5];
+    this._target = null;
   }
 }

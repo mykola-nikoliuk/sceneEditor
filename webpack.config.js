@@ -1,15 +1,17 @@
 const path = require('path');
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const WebpackCleanupPlugin = require('webpack-cleanup-plugin');
 
 module.exports = {
+  context: path.resolve(__dirname, 'src'),
   entry: {
-    main: ['./src/index.js']
+    main: ['./index.js']
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: 'index.js'
+    filename: '[name].js'
   },
   module: {
     loaders: [{
@@ -19,21 +21,24 @@ module.exports = {
       test: /\.js$/,
       loader: 'babel-loader'
     }, {
-      test: /\.(mtl|obj|fbx|jpg|png)$/,
+      test: /\.(mtl|obj|fbx|jpg|png|json)$/,
       loader: 'file-loader?name=[path][name].[ext]?[hash]&context=./src'
     }]
   },
   plugins: [
     new WebpackCleanupPlugin(),
+    // new webpack.optimize.CommonsChunkPlugin("init"),
     new HtmlWebpackPlugin({
-      title: 'test'
+      template: './index.ejs'
+      // chunks: ['init']
     }),
     new CopyWebpackPlugin([
-      {from: '**/*.FBX', context: './src'},
-      {from: '**/*.tga', context: './src'},
-      {from: '**/*.jpg', context: './src'},
-      {from: '**/*.png', context: './src'},
-      {from: '**/*.tga', context: './src'}
+      {from: '**/*.FBX'},
+      {from: '**/*.tga'},
+      {from: '**/*.jpg'},
+      {from: '**/*.png'},
+      {from: '**/*.tga'},
+      {from: '**/*.json'}
     ])
   ]
 };
