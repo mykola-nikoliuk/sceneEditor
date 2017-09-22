@@ -59,7 +59,9 @@ export default THREE => {
 
           try {
 
-            self.parse(buffer, resourceDirectory).then(onLoad);
+            const promise = self.parse(buffer, resourceDirectory);
+            promise.then(onLoad);
+            return promise;
 
           } catch (error) {
 

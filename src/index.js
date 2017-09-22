@@ -26,12 +26,20 @@ function createLoadingView() {
   new LoadingView(renderer).onLoad(loadingView => {
     view = loadingView;
     render(previousTimestamp);
+    // require.ensure([], require => {
+    //   const GameView = require('view/Game').GameView;
+    //   new GameView(renderer).onLoad(gameView => {
+    //     view.destroy();
+    //     view = gameView;
+    //   });
+    // });
     require.ensure([], require => {
-      const GameView = require('view/Game').GameView;
-      new GameView(renderer).onLoad(gameView => {
-        view = gameView;
+      const EditorView = require('view/Editor').EditorView;
+      new EditorView(renderer).onLoad(editorView => {
+        view.destroy();
+        view = editorView;
       });
-    })
+    });
   });
 }
 

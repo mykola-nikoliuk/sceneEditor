@@ -1,0 +1,12 @@
+{
+  "plane": {
+    "material": {
+      "map": "plane/stone_road.png",
+      "normalMap": "plane/stone_road_normal.png"
+    }
+  },
+  "assets": {
+    "Iron cat": "tank/tank.FBX",
+    "Iron cat (red)": "tank_red/tank.FBX"
+  }
+}

@@ -21,8 +21,11 @@ module.exports = {
       test: /\.js$/,
       loader: 'babel-loader'
     }, {
-      test: /\.(mtl|obj|fbx|jpg|png|json)$/,
+      test: /\.(mtl|obj|fbx|jpg|png)$/,
       loader: 'file-loader?name=[path][name].[ext]?[hash]&context=./src'
+    }, {
+      test: /\.json$/,
+      loader: 'json-loader'
     }]
   },
   plugins: [
@@ -37,8 +40,7 @@ module.exports = {
       {from: '**/*.tga'},
       {from: '**/*.jpg'},
       {from: '**/*.png'},
-      {from: '**/*.tga'},
-      {from: '**/*.json'}
+      {from: '**/*.tga'}
     ])
   ]
 };

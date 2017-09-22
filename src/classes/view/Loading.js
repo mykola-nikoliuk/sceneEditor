@@ -1,4 +1,4 @@
-import * as THREE from 'three/build/three.min';
+import THREE from 'lib/three-lite';
 import {View} from 'view/View';
 import fontURL from 'fonts/helvetiker_regular.typeface.json';
 import {screen, SCREEN_EVENTS} from 'general/Screen'
@@ -49,7 +49,8 @@ export class LoadingView extends View {
     const textGeometry = new THREE.TextGeometry("LOADING", {
       font: font,
       size: 2,
-      height: 1
+      height: 1,
+      curveSegments: 2
     });
     textGeometry.computeBoundingBox();
 
@@ -62,14 +63,14 @@ export class LoadingView extends View {
 
     mesh.rotation.y = Math.PI;
     mesh.position.set(
-      0.5 * ( textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x ),
+      0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x),
       -16,
-      0
+      0.5 * (textGeometry.boundingBox.max.z - textGeometry.boundingBox.min.z),
     );
     const group = new THREE.Group();
     group.add(mesh);
 
     this._text = group;
-    this.scene.add(this._text);
+    this._scene.add(this._text);
   }
 }
