@@ -1,7 +1,7 @@
 const WebpackDevServer = require('webpack-dev-server');
 const webpack = require('webpack');
 const getPort = require('getport');
-const config = require('../webpack.config');
+const config = require('../webpack.config')();
 const port = parseInt(process.argv[2]);
 const hotModuleReplacement = new webpack.HotModuleReplacementPlugin();
 

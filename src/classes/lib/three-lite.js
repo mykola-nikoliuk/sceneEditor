@@ -1,5 +1,10 @@
-// import * as THREE from "three/build/three.min";
-import * as THREE from "three";
+if (ENVIRONMENT === 'production') {
+  const THREE = require("three/build/three.min").default;
+}
+if (ENVIRONMENT === 'development') {
+  const THREE = require("three").default;
+}
+
 
 THREE.Vector3.prototype.angleTo = function (point) {
   const {x, z} = point.clone().sub(this);
