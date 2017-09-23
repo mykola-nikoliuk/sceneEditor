@@ -1,8 +1,10 @@
+/*global ENVIRONMENT*/
+/*eslint-env node*/
+let THREE;
 if (ENVIRONMENT === 'production') {
-  const THREE = require("three/build/three.min").default;
-}
-if (ENVIRONMENT === 'development') {
-  const THREE = require("three").default;
+  THREE = require('three/build/three.min').default;
+} else {
+  THREE = require('three');
 }
 
 
@@ -29,7 +31,7 @@ THREE.Object3D.prototype.dispose = function (deep) {
   }
   if (deep && this.children) {
     this.children.forEach(child => {
-      child.dispose && child.dispose(deep)
+      child.dispose && child.dispose(deep);
     });
   }
 };
