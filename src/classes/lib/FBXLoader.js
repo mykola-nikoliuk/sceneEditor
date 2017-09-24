@@ -474,6 +474,24 @@ export default THREE => {
       material.setValues(parameters);
       material.name = name;
 
+      // todo: parse unsupported things from name
+      if (name.length) {
+        const textKeys = /\(\s*(.+)\s*\)/g.exec(name);
+        if (textKeys) {
+          const keys = textKeys[1].split('/');
+          keys.forEach(key => {
+            switch (key.toLowerCase()) {
+              case 'tr':
+                material.transparent = true;
+                break;
+              case 'ds':
+                material.side = THREE.DoubleSide;
+                break;
+            }
+          });
+        }
+      }
+
       return material;
 
     }
