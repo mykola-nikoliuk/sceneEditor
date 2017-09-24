@@ -316,6 +316,8 @@ export default THREE => {
           }
 
           nextTexture().then(resolve);
+        } else {
+          resolve(textureMap);
         }
       });
     }
