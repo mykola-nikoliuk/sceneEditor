@@ -127,7 +127,7 @@ export class EditorView extends View {
         this._scene.add(mesh);
         resolve();
       });
-    })
+    });
   }
 
   _cameraScale(e, {y}) {
@@ -176,38 +176,38 @@ export class EditorView extends View {
 
     mouse.subscribe(DOWN, e => {
       switch (e.button) {
-        case MAIN:
-          this._selectAsset(event);
-          if (this._selectedAsset) {
-            if (keyboard.state.SHIFT) {
-              mouseData.rotationEnabled = true;
-            } else if (keyboard.state.CTRL) {
-              mouseData.scaleEnabled = true;
-            } else if (keyboard.state.ALT) {
-              mouseData.dragVerticalEnabled = true;
-            } else {
-              mouseData.dragDelta = this._getPosition(event).sub(this._selectedAsset.position);
-              mouseData.dragEnabled = true;
-            }
+      case MAIN:
+        this._selectAsset(event);
+        if (this._selectedAsset) {
+          if (keyboard.state.SHIFT) {
+            mouseData.rotationEnabled = true;
+          } else if (keyboard.state.CTRL) {
+            mouseData.scaleEnabled = true;
+          } else if (keyboard.state.ALT) {
+            mouseData.dragVerticalEnabled = true;
+          } else {
+            mouseData.dragDelta = this._getPosition(event).sub(this._selectedAsset.position);
+            mouseData.dragEnabled = true;
           }
-          break;
-        case SECOND:
-          this._cameraData.rotationEnabled = true;
-          break;
+        }
+        break;
+      case SECOND:
+        this._cameraData.rotationEnabled = true;
+        break;
       }
     }, this._renderer.domElement);
 
     mouse.subscribe(UP, e => {
       switch (e.button) {
-        case MAIN:
-          mouseData.dragEnabled = false;
-          mouseData.rotationEnabled = false;
-          mouseData.scaleEnabled = false;
-          mouseData.dragVerticalEnabled = false;
-          break;
-        case SECOND:
-          this._cameraData.rotationEnabled = false;
-          break;
+      case MAIN:
+        mouseData.dragEnabled = false;
+        mouseData.rotationEnabled = false;
+        mouseData.scaleEnabled = false;
+        mouseData.dragVerticalEnabled = false;
+        break;
+      case SECOND:
+        this._cameraData.rotationEnabled = false;
+        break;
       }
     }, this._renderer.domElement);
 
@@ -225,7 +225,7 @@ export class EditorView extends View {
         this._assetBBox.visible = false;
         this._selectedAsset = null;
       }
-    })
+    });
   }
 
   _createGUI() {
@@ -278,7 +278,7 @@ export class EditorView extends View {
             position: asset.position.toArray(),
             rotation: asset.rotation.toArray(),
             scale: asset.scale.toArray()
-          }
+          };
         });
         store.set(guiStorageKey, guiConfig);
         store.set(assetsStorageKey, assets);
@@ -364,11 +364,11 @@ export class EditorView extends View {
       if (typeof guiChange[key] === 'object') {
         Object.keys(guiChange[key]).forEach(subKey => {
           guiChange[key][subKey](guiConfig[key][subKey]);
-        })
+        });
       } else if (guiConfig[key]) {
         guiChange[key](guiConfig[key]);
       }
-    })
+    });
   }
 
   _getPosition(event) {
@@ -377,7 +377,7 @@ export class EditorView extends View {
     vector.set(
       (event.clientX / screen.width) * 2 - 1,
       -(event.clientY / screen.height) * 2 + 1,
-      0.5,
+      0.5
     );
 
     vector.unproject(this._camera);
