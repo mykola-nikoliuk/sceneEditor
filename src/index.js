@@ -1,3 +1,4 @@
+/* eslint-env node */
 import * as THREE from 'three/build/three.min';
 import './style/index.styl';
 import {screen, SCREEN_EVENTS} from 'general/Screen';
@@ -26,18 +27,12 @@ function createLoadingView() {
   new LoadingView(renderer).onLoad(loadingView => {
     view = loadingView;
     render(previousTimestamp);
-    // require.ensure([], require => {
-    //   const GameView = require('view/Game').GameView;
-    //   new GameView(renderer).onLoad(gameView => {
-    //     view.destroy();
-    //     view = gameView;
-    //   });
-    // });
     require.ensure([], require => {
-      const EditorView = require('view/Editor').EditorView;
-      new EditorView(renderer).onLoad(editorView => {
+      // const ViewClass = require('view/Material').MaterialView;
+      const ViewClass = require('view/Editor').EditorView;
+      new ViewClass(renderer).onLoad(viewInstance => {
         view.destroy();
-        view = editorView;
+        view = viewInstance;
       });
     });
   });

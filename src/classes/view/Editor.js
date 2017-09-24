@@ -5,16 +5,10 @@ import {screen, SCREEN_EVENTS} from 'general/Screen';
 import store from 'store';
 import map from 'lodash/map';
 import mouse, {ENUMS as MOUSE_ENUMS} from 'input/Mouse';
-import keyboard, {KEY_CODES} from 'input/Keyboard';
-import {normalizeAngle} from 'utils/utils';
-import AnimationManager, {
-  Animation,
-  Keyframe,
-  UPDATE_VECTOR3,
-  UPDATE_NUMBER
-} from 'animationManager/AnimationManager';
+import keyboard from 'input/Keyboard';
 import Skybox from 'Skybox';
 import 'style/dat.gui.styl';
+import 'utils/utils';
 import config from 'editor/editor.json';
 import right from 'resources/skyboxes/blueSky/right.jpg';
 import left from 'resources/skyboxes/blueSky/left.jpg';
@@ -24,8 +18,6 @@ import front from 'resources/skyboxes/blueSky/front.jpg';
 import back from 'resources/skyboxes/blueSky/back.jpg';
 
 const cameraLimit = Math.PI / 720;
-const selectorOpacity = 0.5;
-const animationManager = new AnimationManager();
 
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
@@ -59,7 +51,7 @@ export class EditorView extends View {
     );
   }
 
-  render(delta) {
+  render() {
     this._camera.position.copy(this._cameraPosition).add(this._target);
     this._camera.lookAt(this._target);
 
@@ -171,43 +163,43 @@ export class EditorView extends View {
   }
 
   _initMouse() {
-    const {EVENTS: {MOVE, UP, DOWN, WHEEL, CONTEXT}, BUTTONS: {MAIN, MIDDLE, SECOND}} = MOUSE_ENUMS;
+    const {EVENTS: {MOVE, UP, DOWN, WHEEL, CONTEXT}, BUTTONS: {MAIN, SECOND}} = MOUSE_ENUMS;
     mouse.subscribe(MOVE, this._mouseUpdate.bind(this), this._renderer.domElement);
 
     mouse.subscribe(DOWN, e => {
       switch (e.button) {
-      case MAIN:
-        this._selectAsset(event);
-        if (this._selectedAsset) {
-          if (keyboard.state.SHIFT) {
-            mouseData.rotationEnabled = true;
-          } else if (keyboard.state.CTRL) {
-            mouseData.scaleEnabled = true;
-          } else if (keyboard.state.ALT) {
-            mouseData.dragVerticalEnabled = true;
-          } else {
-            mouseData.dragDelta = this._getPosition(event).sub(this._selectedAsset.position);
-            mouseData.dragEnabled = true;
+        case MAIN:
+          this._selectAsset(event);
+          if (this._selectedAsset) {
+            if (keyboard.state.SHIFT) {
+              mouseData.rotationEnabled = true;
+            } else if (keyboard.state.CTRL) {
+              mouseData.scaleEnabled = true;
+            } else if (keyboard.state.ALT) {
+              mouseData.dragVerticalEnabled = true;
+            } else {
+              mouseData.dragDelta = this._getPosition(event).sub(this._selectedAsset.position);
+              mouseData.dragEnabled = true;
+            }
           }
-        }
-        break;
-      case SECOND:
-        this._cameraData.rotationEnabled = true;
-        break;
+          break;
+        case SECOND:
+          this._cameraData.rotationEnabled = true;
+          break;
       }
     }, this._renderer.domElement);
 
     mouse.subscribe(UP, e => {
       switch (e.button) {
-      case MAIN:
-        mouseData.dragEnabled = false;
-        mouseData.rotationEnabled = false;
-        mouseData.scaleEnabled = false;
-        mouseData.dragVerticalEnabled = false;
-        break;
-      case SECOND:
-        this._cameraData.rotationEnabled = false;
-        break;
+        case MAIN:
+          mouseData.dragEnabled = false;
+          mouseData.rotationEnabled = false;
+          mouseData.scaleEnabled = false;
+          mouseData.dragVerticalEnabled = false;
+          break;
+        case SECOND:
+          this._cameraData.rotationEnabled = false;
+          break;
       }
     }, this._renderer.domElement);
 
@@ -351,6 +343,40 @@ export class EditorView extends View {
         });
       });
     });
+
+    createAsset['Cube'] = () => {
+      const clone = new THREE.Mesh(
+        new THREE.CubeGeometry(100, 100, 100),
+        new THREE.MeshPhongMaterial({
+          color: Math.random() * 0xffffff,
+          transparent: true,
+          opacity: .5,
+          side: THREE.DoubleSide
+        })
+      );
+      clone.name = 'cube';
+      this._assets.push(clone);
+      this._scene.add(clone);
+      return clone;
+    };
+    spawn.add(createAsset, 'Cube');
+
+    createAsset['Sphere'] = () => {
+      const clone = new THREE.Mesh(
+        new THREE.SphereGeometry(100, 16, 16),
+        new THREE.MeshPhongMaterial({
+          color: Math.random() * 0xffffff,
+          transparent: true,
+          opacity: .5,
+          side: THREE.DoubleSide
+        })
+      );
+      clone.name = 'Sphere';
+      this._assets.push(clone);
+      this._scene.add(clone);
+      return clone;
+    };
+    spawn.add(createAsset, 'Sphere');
 
     gui.add(guiChange, 'save');
     gui.add(guiChange, 'load');

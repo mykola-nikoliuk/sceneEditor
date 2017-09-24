@@ -1,3 +1,4 @@
+/* eslint-env node */
 const path = require('path');
 const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -28,6 +29,9 @@ module.exports = (env = {}) => {
       }, {
         test: /\.json$/,
         loader: 'json-loader'
+      }, {
+        test: /\.(vert|frag)$/,
+        loader: 'text-loader'
       }]
     },
     plugins: [

@@ -238,30 +238,30 @@ export default THREE => {
 
       switch (extension) {
 
-      case 'bmp':
+        case 'bmp':
 
-        type = 'image/bmp';
-        break;
+          type = 'image/bmp';
+          break;
 
-      case 'jpg':
+        case 'jpg':
 
-        type = 'image/jpeg';
-        break;
+          type = 'image/jpeg';
+          break;
 
-      case 'png':
+        case 'png':
 
-        type = 'image/png';
-        break;
+          type = 'image/png';
+          break;
 
-      case 'tif':
+        case 'tif':
 
-        type = 'image/tiff';
-        break;
+          type = 'image/tiff';
+          break;
 
-      default:
+        default:
 
-        console.warn('FBXLoader: No support image type ' + extension);
-        return;
+          console.warn('FBXLoader: No support image type ' + extension);
+          return;
 
       }
 
@@ -458,16 +458,16 @@ export default THREE => {
 
       switch (type.toLowerCase()) {
 
-      case 'phong':
-        material = new THREE.MeshPhongMaterial();
-        break;
-      case 'lambert':
-        material = new THREE.MeshLambertMaterial();
-        break;
-      default:
-        console.warn('THREE.FBXLoader: No implementation given for material type %s in FBXLoader.js. Defaulting to basic material.', type);
-        material = new THREE.MeshBasicMaterial({color: 0x3300ff});
-        break;
+        case 'phong':
+          material = new THREE.MeshPhongMaterial();
+          break;
+        case 'lambert':
+          material = new THREE.MeshLambertMaterial();
+          break;
+        default:
+          console.warn('THREE.FBXLoader: No implementation given for material type %s in FBXLoader.js. Defaulting to basic material.', type);
+          material = new THREE.MeshBasicMaterial({color: 0x3300ff});
+          break;
 
       }
 
@@ -539,28 +539,32 @@ export default THREE => {
 
         switch (type) {
 
-        case 'DiffuseColor':
-        case ' "DiffuseColor':
-          parameters.map = textureMap.get(relationship.ID);
-          break;
+          case 'DiffuseColor':
+          case ' "DiffuseColor':
+            parameters.map = textureMap.get(relationship.ID);
+            break;
 
-        case 'Bump':
-        case ' "Bump':
-          parameters.bumpMap = textureMap.get(relationship.ID);
-          break;
+          case 'Bump':
+          case ' "Bump':
+            parameters.bumpMap = textureMap.get(relationship.ID);
+            break;
 
-        case 'NormalMap':
-        case ' "NormalMap':
-          parameters.normalMap = textureMap.get(relationship.ID);
-          break;
+          case 'NormalMap':
+          case ' "NormalMap':
+            parameters.normalMap = textureMap.get(relationship.ID);
+            break;
 
-        case 'AmbientColor':
-        case 'EmissiveColor':
-        case ' "AmbientColor':
-        case ' "EmissiveColor':
-        default:
-          console.warn('THREE.FBXLoader: Unknown texture application of type %s, skipping texture.', type);
-          break;
+          case 'TransparentColor':
+            parameters.alphaMap = textureMap.get(relationship.ID);
+            break;
+
+          case 'AmbientColor':
+          case 'EmissiveColor':
+          case ' "AmbientColor':
+          case ' "EmissiveColor':
+          default:
+            console.warn('THREE.FBXLoader: Unknown texture application of type %s, skipping texture.', type);
+            break;
 
         }
 
@@ -691,13 +695,13 @@ export default THREE => {
 
       switch (geometryNode.attrType) {
 
-      case 'Mesh':
-        return parseMeshGeometry(geometryNode, relationships, deformers);
-        break;
+        case 'Mesh':
+          return parseMeshGeometry(geometryNode, relationships, deformers);
+          break;
 
-      case 'NurbsCurve':
-        return parseNurbsGeometry(geometryNode);
-        break;
+        case 'NurbsCurve':
+          return parseNurbsGeometry(geometryNode);
+          break;
 
       }
 
@@ -1393,101 +1397,101 @@ export default THREE => {
 
           switch (node.attrType) {
 
-          case 'Mesh':
+            case 'Mesh':
             /**
                * @type {?THREE.BufferGeometry}
                */
-            var geometry = null;
+              var geometry = null;
 
-            /**
+              /**
                * @type {THREE.MultiMaterial|THREE.Material}
                */
-            var material = null;
+              var material = null;
 
-            /**
+              /**
                * @type {Array.<THREE.Material>}
                */
-            var materials = [];
+              var materials = [];
 
-            for (var childrenIndex = 0, childrenLength = conns.children.length; childrenIndex < childrenLength; ++childrenIndex) {
+              for (var childrenIndex = 0, childrenLength = conns.children.length; childrenIndex < childrenLength; ++childrenIndex) {
 
-              var child = conns.children[childrenIndex];
+                var child = conns.children[childrenIndex];
 
-              if (geometryMap.has(child.ID)) {
+                if (geometryMap.has(child.ID)) {
 
-                geometry = geometryMap.get(child.ID);
+                  geometry = geometryMap.get(child.ID);
+
+                }
+
+                if (materialMap.has(child.ID)) {
+
+                  materials.push(materialMap.get(child.ID));
+
+                }
+
+              }
+              if (materials.length > 1) {
+
+                material = materials;
+
+              } else if (materials.length > 0) {
+
+                material = materials[0];
+
+              } else {
+
+                material = new THREE.MeshBasicMaterial({color: 0x3300ff});
+                materials.push(material);
+
+              }
+              if ('color' in geometry.attributes) {
+
+                for (var materialIndex = 0, numMaterials = materials.length; materialIndex < numMaterials; ++materialIndex) {
+
+                  materials[materialIndex].vertexColors = THREE.VertexColors;
+
+                }
+
+              }
+              if (geometry.FBX_Deformer) {
+
+                for (var materialsIndex = 0, materialsLength = materials.length; materialsIndex < materialsLength; ++materialsIndex) {
+
+                  materials[materialsIndex].skinning = true;
+
+                }
+                model = new THREE.SkinnedMesh(geometry, material);
+
+              } else {
+
+                model = new THREE.Mesh(geometry, material);
+
+              }
+              break;
+
+            case 'NurbsCurve':
+              var geometry = null;
+
+              for (var childrenIndex = 0, childrenLength = conns.children.length; childrenIndex < childrenLength; ++childrenIndex) {
+
+                var child = conns.children[childrenIndex];
+
+                if (geometryMap.has(child.ID)) {
+
+                  geometry = geometryMap.get(child.ID);
+
+                }
 
               }
 
-              if (materialMap.has(child.ID)) {
+              // FBX does not list materials for Nurbs lines, so we'll just put our own in here.
+              material = new THREE.LineBasicMaterial({color: 0x3300ff, linewidth: 5});
+              model = new THREE.Line(geometry, material);
+              break;
 
-                materials.push(materialMap.get(child.ID));
-
-              }
-
-            }
-            if (materials.length > 1) {
-
-              material = materials;
-
-            } else if (materials.length > 0) {
-
-              material = materials[0];
-
-            } else {
-
-              material = new THREE.MeshBasicMaterial({color: 0x3300ff});
-              materials.push(material);
-
-            }
-            if ('color' in geometry.attributes) {
-
-              for (var materialIndex = 0, numMaterials = materials.length; materialIndex < numMaterials; ++materialIndex) {
-
-                materials[materialIndex].vertexColors = THREE.VertexColors;
-
-              }
-
-            }
-            if (geometry.FBX_Deformer) {
-
-              for (var materialsIndex = 0, materialsLength = materials.length; materialsIndex < materialsLength; ++materialsIndex) {
-
-                materials[materialsIndex].skinning = true;
-
-              }
-              model = new THREE.SkinnedMesh(geometry, material);
-
-            } else {
-
-              model = new THREE.Mesh(geometry, material);
-
-            }
-            break;
-
-          case 'NurbsCurve':
-            var geometry = null;
-
-            for (var childrenIndex = 0, childrenLength = conns.children.length; childrenIndex < childrenLength; ++childrenIndex) {
-
-              var child = conns.children[childrenIndex];
-
-              if (geometryMap.has(child.ID)) {
-
-                geometry = geometryMap.get(child.ID);
-
-              }
-
-            }
-
-            // FBX does not list materials for Nurbs lines, so we'll just put our own in here.
-            material = new THREE.LineBasicMaterial({color: 0x3300ff, linewidth: 5});
-            model = new THREE.Line(geometry, material);
-            break;
-
-          default:
-            model = new THREE.Object3D();
-            break;
+            default:
+              model = new THREE.Object3D();
+              break;
 
           }
 
@@ -3968,18 +3972,18 @@ export default THREE => {
         // cast value in its type
         switch (innerPropType1) {
 
-        case 'int':
-          innerPropValue = parseInt(innerPropValue);
-          break;
+          case 'int':
+            innerPropValue = parseInt(innerPropValue);
+            break;
 
-        case 'double':
-          innerPropValue = parseFloat(innerPropValue);
-          break;
+          case 'double':
+            innerPropValue = parseFloat(innerPropValue);
+            break;
 
-        case 'ColorRGB':
-        case 'Vector3D':
-          innerPropValue = parseFloatArray(innerPropValue);
-          break;
+          case 'ColorRGB':
+          case 'Vector3D':
+            innerPropValue = parseFloatArray(innerPropValue);
+            break;
 
         }
 
@@ -4324,95 +4328,95 @@ export default THREE => {
 
         switch (type) {
 
-        case 'F':
-          return reader.getFloat32();
+          case 'F':
+            return reader.getFloat32();
 
-        case 'D':
-          return reader.getFloat64();
+          case 'D':
+            return reader.getFloat64();
 
-        case 'L':
-          return reader.getInt64();
+          case 'L':
+            return reader.getInt64();
 
-        case 'I':
-          return reader.getInt32();
+          case 'I':
+            return reader.getInt32();
 
-        case 'Y':
-          return reader.getInt16();
+          case 'Y':
+            return reader.getInt16();
 
-        case 'C':
-          return reader.getBoolean();
+          case 'C':
+            return reader.getBoolean();
 
-        case 'f':
-        case 'd':
-        case 'l':
-        case 'i':
-        case 'b':
+          case 'f':
+          case 'd':
+          case 'l':
+          case 'i':
+          case 'b':
 
-          var arrayLength = reader.getUint32();
-          var encoding = reader.getUint32(); // 0: non-compressed, 1: compressed
-          var compressedLength = reader.getUint32();
+            var arrayLength = reader.getUint32();
+            var encoding = reader.getUint32(); // 0: non-compressed, 1: compressed
+            var compressedLength = reader.getUint32();
 
-          if (encoding === 0) {
+            if (encoding === 0) {
 
-            switch (type) {
+              switch (type) {
 
-            case 'f':
-              return reader.getFloat32Array(arrayLength);
+                case 'f':
+                  return reader.getFloat32Array(arrayLength);
 
-            case 'd':
-              return reader.getFloat64Array(arrayLength);
+                case 'd':
+                  return reader.getFloat64Array(arrayLength);
 
-            case 'l':
-              return reader.getInt64Array(arrayLength);
+                case 'l':
+                  return reader.getInt64Array(arrayLength);
 
-            case 'i':
-              return reader.getInt32Array(arrayLength);
+                case 'i':
+                  return reader.getInt32Array(arrayLength);
 
-            case 'b':
-              return reader.getBooleanArray(arrayLength);
+                case 'b':
+                  return reader.getBooleanArray(arrayLength);
+
+              }
 
             }
 
-          }
+            if (Zlib === undefined) {
 
-          if (Zlib === undefined) {
+              throw new Error('THREE.FBXLoader: External library Inflate.min.js required, obtain or import from https://github.com/imaya/zlib.js');
 
-            throw new Error('THREE.FBXLoader: External library Inflate.min.js required, obtain or import from https://github.com/imaya/zlib.js');
+            }
 
-          }
+            var inflate = new Zlib.Inflate(new Uint8Array(reader.getArrayBuffer(compressedLength)));
+            var reader2 = new BinaryReader(inflate.decompress().buffer);
 
-          var inflate = new Zlib.Inflate(new Uint8Array(reader.getArrayBuffer(compressedLength)));
-          var reader2 = new BinaryReader(inflate.decompress().buffer);
+            switch (type) {
 
-          switch (type) {
+              case 'f':
+                return reader2.getFloat32Array(arrayLength);
 
-          case 'f':
-            return reader2.getFloat32Array(arrayLength);
+              case 'd':
+                return reader2.getFloat64Array(arrayLength);
 
-          case 'd':
-            return reader2.getFloat64Array(arrayLength);
+              case 'l':
+                return reader2.getInt64Array(arrayLength);
 
-          case 'l':
-            return reader2.getInt64Array(arrayLength);
+              case 'i':
+                return reader2.getInt32Array(arrayLength);
 
-          case 'i':
-            return reader2.getInt32Array(arrayLength);
+              case 'b':
+                return reader2.getBooleanArray(arrayLength);
 
-          case 'b':
-            return reader2.getBooleanArray(arrayLength);
+            }
 
-          }
+          case 'S':
+            var length = reader.getUint32();
+            return reader.getString(length);
 
-        case 'S':
-          var length = reader.getUint32();
-          return reader.getString(length);
+          case 'R':
+            var length = reader.getUint32();
+            return reader.getArrayBuffer(length);
 
-        case 'R':
-          var length = reader.getUint32();
-          return reader.getArrayBuffer(length);
-
-        default:
-          throw new Error('THREE.FBXLoader: Unknown property type ' + type);
+          default:
+            throw new Error('THREE.FBXLoader: Unknown property type ' + type);
 
         }
 
