@@ -2,7 +2,7 @@
 /*eslint-env node*/
 let THREE;
 if (ENVIRONMENT === 'production') {
-  THREE = require('three/build/three.min').default;
+  THREE = require('three/build/three.min');
 } else {
   THREE = require('three');
 }
