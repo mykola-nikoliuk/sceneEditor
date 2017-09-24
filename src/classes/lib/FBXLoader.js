@@ -318,6 +318,8 @@ export function addFBXLoader (THREE) {
           }
 
           nextTexture().then(resolve);
+        } else {
+          resolve(textureMap);
         }
       });
     }

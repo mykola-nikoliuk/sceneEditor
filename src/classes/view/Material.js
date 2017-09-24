@@ -148,7 +148,7 @@ export class MaterialView extends View {
 
   _createMaterial() {
     const uniforms = {
-      repeat: {value: 1},
+      repeat: {value: 4},
       tex1: {value: new THREE.TextureLoader().load(sand)},
       tex1b: {value: new THREE.TextureLoader().load(sandBump)},
       tex2: {value: new THREE.TextureLoader().load(gravel)},

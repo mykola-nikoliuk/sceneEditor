@@ -23,8 +23,7 @@ void main( void ) {
   vec4 b = texture2D(blend, vUv);
   vec4 depth = vec4(b.rgb, 1. - b.a) * vec4(t1b.r, t2b.r, t3b.r, t4b.r);
   vec3 tex = t1;
-  float m = b.r;
-//  float coefficient = 1. / (b.r + b.g + b.b + (1.0 - b.a));
+  float m = depth.r;
 
   if (depth.g > m) {
     m = depth.g;
@@ -39,6 +38,14 @@ void main( void ) {
     tex = t4;
   }
 
+  float ma = m - 0.1;
+  float fm1 = max(depth.r - ma, 0.);
+  float fm2 = max(depth.g - ma, 0.);
+  float fm3 = max(depth.b - ma, 0.);
+  float fm4 = max(depth.a - ma, 0.);
+
+  tex = (t1.rgb * fm1 + t2.rgb * fm2 + t3.rgb * fm3 + t4.rgb * fm4) / (fm1 + fm2 + fm3 + fm4);
+
 //  t1 = vec3(t1.rgb * (b.g * coefficient));
 //  t2 = vec3(t2.rgb * (b.b * coefficient));
 //  t3 = vec3(t3.rgb * (b.r * coefficient));
@@ -46,3 +53,8 @@ void main( void ) {
 //  gl_FragColor = vec4(t1 + t2 + t3 + t4, 1.0);
   gl_FragColor = vec4(tex, 1.0);
 }
+/*
+
+float max(float a, float b) {
+    return a > b ? a : b;
+}*/
