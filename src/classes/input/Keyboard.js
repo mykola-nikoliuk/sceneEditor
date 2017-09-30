@@ -7,17 +7,22 @@ export const KEY_CODES = {
   39: 'RIGHT',
   40: 'DOWN',
   87: 'W',
-  83: 'S',
   16: 'SHIFT',
   17: 'CTRL',
   18: 'ALT',
-  46: 'DELETE'
+  46: 'DELETE',
+  84: 'T',
+  83: 'S',
+  82: 'R',
+  67: 'C',
+  27: 'ESC'
 };
 
 function turnOff(state, {keyCode}) {
   if (typeof KEY_CODES[keyCode] === 'string') {
     state[KEY_CODES[keyCode]] = false;
   }
+  console.log('key up:', keyCode);
 }
 
 function turnOn(state, {keyCode}) {
@@ -25,6 +30,7 @@ function turnOn(state, {keyCode}) {
     state[KEY_CODES[keyCode]] = true;
     this.emit(KEY_CODES[keyCode]);
   }
+  console.log('key down:', keyCode);
 }
 
 class Keyboard extends EventEmitter {

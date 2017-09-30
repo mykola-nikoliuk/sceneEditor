@@ -50,6 +50,7 @@ export class EditorView extends View {
   }
 
   render() {
+    this._transformControls.enabled && this._transformControls.update();
     this._renderer.render(this._scene, this._camera);
   }
 
@@ -68,12 +69,16 @@ export class EditorView extends View {
     }
     this._camera.lookAt(new THREE.Vector3());
 
-    this._controls = new THREE.OrbitControls(this._camera, this._renderer.domElement, {
+    this._orbitControls = new THREE.OrbitControls(this._camera, this._renderer.domElement, {
       maxPolarAngle: Math.PI / 2
     });
     if (save) {
-      this._controls.target = new THREE.Vector3().fromArray(save.target);
+      this._orbitControls.target = new THREE.Vector3().fromArray(save.target);
     }
+
+    this._transformControls = new THREE.TransformControls(this._camera, this._renderer.domElement);
+    this._transformControls.enabled = false;
+    this._scene.add(this._transformControls);
   }
 
   _createScene() {
@@ -106,9 +111,6 @@ export class EditorView extends View {
       this._axis = new THREE.AxisHelper(1);
       this._scene.add(this._axis);
 
-      this._assetBBox = new THREE.BoxHelper(undefined, 0x00ff00);
-      this._assetBBox.visible = false;
-      this._scene.add(this._assetBBox);
       this._createSkybox(skyboxImages).then(resolve.bind(null, this));
     });
   }
@@ -126,55 +128,27 @@ export class EditorView extends View {
     if (event) {
       if (mouseData.dragEnabled) {
         this._selectedAsset.position.copy(this._getPosition(position).sub(mouseData.dragDelta));
-        this._assetBBox.update();
       }
       if (mouseData.rotationEnabled) {
         this._selectedAsset.rotation.y += x / 200;
-        this._assetBBox.update();
       }
       if (mouseData.scaleEnabled) {
         const scale = this._selectedAsset.scale.x - y / 200;
         this._selectedAsset.scale.set(scale, scale, scale);
-        this._assetBBox.update();
       }
       if (mouseData.dragVerticalEnabled) {
         this._selectedAsset.position.y -= y;
-        this._assetBBox.update();
       }
     }
   }
 
   _initMouse() {
-    const {EVENTS: {MOVE, UP, DOWN}, BUTTONS: {MAIN}} = MOUSE_ENUMS;
-    mouse.subscribe(MOVE, this._mouseUpdate.bind(this), this._renderer.domElement);
+    const {EVENTS: {UP, DOWN}, BUTTONS: {MAIN}} = MOUSE_ENUMS;
 
-    mouse.subscribe(DOWN, ({event, position}) => {
+    mouse.subscribe(DOWN, ({event}) => {
       switch (event.button) {
         case MAIN:
           this._selectAsset(event);
-          if (this._selectedAsset) {
-            if (keyboard.state.SHIFT) {
-              mouseData.rotationEnabled = true;
-            } else if (keyboard.state.CTRL) {
-              mouseData.scaleEnabled = true;
-            } else if (keyboard.state.ALT) {
-              mouseData.dragVerticalEnabled = true;
-            } else {
-              mouseData.dragDelta = this._getPosition(position).sub(this._selectedAsset.position);
-              mouseData.dragEnabled = true;
-            }
-          }
-          break;
-      }
-    }, this._renderer.domElement);
-
-    mouse.subscribe(UP, ({event}) => {
-      switch (event.button) {
-        case MAIN:
-          mouseData.dragEnabled = false;
-          mouseData.rotationEnabled = false;
-          mouseData.scaleEnabled = false;
-          mouseData.dragVerticalEnabled = false;
           break;
       }
     }, this._renderer.domElement);
@@ -185,8 +159,28 @@ export class EditorView extends View {
       if (this._selectedAsset) {
         this._scene.remove(this._selectedAsset);
         this._assets.splice(this._assets.indexOf(this._selectedAsset), 1);
-        this._assetBBox.visible = false;
         this._selectedAsset = null;
+        this._transformControls.detach();
+      }
+    });
+
+    keyboard.on('ESC', () => {
+      this._transformControls.detach();
+      this._transformControls.enabled = false;
+    });
+    keyboard.on('T', () => this._transformControls.setMode(THREE.TransformControls.TRANSLATE));
+    keyboard.on('R', () => this._transformControls.setMode(THREE.TransformControls.ROTATE));
+    keyboard.on('S', () => this._transformControls.setMode(THREE.TransformControls.SCALE));
+    keyboard.on('C', () => {
+      if (this._selectedAsset) {
+        const radius = new THREE.Box3().setFromObject(this._selectedAsset).getBoundingSphere().radius * 4;
+        const distance = this._selectedAsset.position.distanceTo(this._camera.position);
+        this._camera.position
+          .sub(this._selectedAsset.position)
+          .multiplyScalar(radius / distance)
+          .add(this._selectedAsset.position);
+        this._orbitControls.target.copy(this._selectedAsset.position);
+        this._orbitControls.update();
       }
     });
   }
@@ -247,7 +241,7 @@ export class EditorView extends View {
         store.set(assetsStorageKey, assets);
         store.set('editor.r1.camera', {
           position: this._camera.position.toArray(),
-          target: this._controls.target.toArray()
+          target: this._orbitControls.target.toArray()
         });
       },
       load: () => {
@@ -265,7 +259,6 @@ export class EditorView extends View {
             });
           }
           this._selectedAsset = null;
-          this._assetBBox.visible = false;
         });
         const loadedConfig = store.get(guiStorageKey);
         if (loadedConfig) {
@@ -405,11 +398,10 @@ export class EditorView extends View {
 
     if (intersects.length) {
       this._selectedAsset = findRootParent(intersects[0].object);
-      this._assetBBox.setFromObject(this._selectedAsset);
-      this._assetBBox.visible = true;
+      this._transformControls.attach(this._selectedAsset);
+      this._transformControls.enabled = true;
     } else {
       this._selectedAsset = null;
-      this._assetBBox.visible = false;
     }
 
     function addChildren(children, objects = []) {
