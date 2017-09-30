@@ -9,6 +9,7 @@ import keyboard from 'input/Keyboard';
 import Skybox from 'Skybox';
 import 'style/dat.gui.styl';
 import 'utils/utils';
+import Stats from 'vendors/stats.min';
 import config from 'editor/editor.json';
 import right from 'resources/skyboxes/blueSky/right.jpg';
 import left from 'resources/skyboxes/blueSky/left.jpg';
@@ -36,6 +37,8 @@ export class EditorView extends View {
     this._scene = new THREE.Scene();
     this._target = new THREE.Vector3(0, 0, 0);
     this._raycaster = new THREE.Raycaster();
+    this._stats = new Stats();
+    document.body.appendChild(this._stats.dom);
 
     this._createCamera();
     this._createScene();
@@ -50,8 +53,10 @@ export class EditorView extends View {
   }
 
   render() {
+    this._stats.begin();
     this._transformControls.enabled && this._transformControls.update();
     this._renderer.render(this._scene, this._camera);
+    this._stats.end();
   }
 
   destroy() {
@@ -143,7 +148,7 @@ export class EditorView extends View {
   }
 
   _initMouse() {
-    const {EVENTS: {UP, DOWN}, BUTTONS: {MAIN}} = MOUSE_ENUMS;
+    const {EVENTS: {DOWN}, BUTTONS: {MAIN}} = MOUSE_ENUMS;
 
     mouse.subscribe(DOWN, ({event}) => {
       switch (event.button) {
