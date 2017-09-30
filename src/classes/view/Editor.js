@@ -17,8 +17,6 @@ import bottom from 'resources/skyboxes/blueSky/bottom.jpg';
 import front from 'resources/skyboxes/blueSky/front.jpg';
 import back from 'resources/skyboxes/blueSky/back.jpg';
 
-const cameraLimit = Math.PI / 720;
-
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
 const assetsStorageKey = 'editor.assets.r1';
@@ -52,9 +50,6 @@ export class EditorView extends View {
   }
 
   render() {
-    this._camera.position.copy(this._cameraPosition).add(this._target);
-    this._camera.lookAt(this._target);
-
     this._renderer.render(this._scene, this._camera);
   }
 
@@ -63,17 +58,22 @@ export class EditorView extends View {
   }
 
   _createCamera() {
+    const save = store.get('editor.r1.camera');
     // todo: change far to logical value
-    this._cameraPosition = new THREE.Vector3();
     this._camera = new THREE.PerspectiveCamera(45, screen.aspectRatio, 1, 1000000);
+    if (save) {
+      this._camera.position.fromArray(save.position);
+    } else {
+      this._camera.position.set(0, 1000, 1000);
+    }
+    this._camera.lookAt(new THREE.Vector3());
 
-    this._cameraData = store.get('cameraData') || {
-      theta: Math.PI / 2 - Math.PI / 4,
-      phi: Math.PI / 24,
-      radius: 500,
-      rotationEnabled: false
-    };
-    this._mouseUpdate({delta: {x: 0, y: 0}});
+    this._controls = new THREE.OrbitControls(this._camera, this._renderer.domElement, {
+      maxPolarAngle: Math.PI / 2
+    });
+    if (save) {
+      this._controls.target = new THREE.Vector3().fromArray(save.target);
+    }
   }
 
   _createScene() {
@@ -122,16 +122,10 @@ export class EditorView extends View {
     });
   }
 
-  _cameraScale(e, {y}) {
-    this._cameraData.radius = (this._cameraData.radius + y / 10).fitToRange(1, Infinity);
-    this._mouseUpdate({e, delta: {x: 0, y: 0}});
-  }
-
-  _mouseUpdate({event, delta: {x, y}}) {
-
+  _mouseUpdate({event, delta: {x, y}, position}) {
     if (event) {
       if (mouseData.dragEnabled) {
-        this._selectedAsset.position.copy(this._getPosition(event).sub(mouseData.dragDelta));
+        this._selectedAsset.position.copy(this._getPosition(position).sub(mouseData.dragDelta));
         this._assetBBox.update();
       }
       if (mouseData.rotationEnabled) {
@@ -144,30 +138,18 @@ export class EditorView extends View {
         this._assetBBox.update();
       }
       if (mouseData.dragVerticalEnabled) {
-        this._selectedAsset.position.y -= y ;
+        this._selectedAsset.position.y -= y;
         this._assetBBox.update();
       }
     }
-
-    if (this._cameraData.rotationEnabled) {
-      this._cameraData.theta = (this._cameraData.theta - y / 500).fitToRange(cameraLimit, Math.PI / 2 - cameraLimit);
-      this._cameraData.phi += x / 500;
-    }
-
-    // Turn back into Cartesian coordinates
-    this._cameraPosition.x = this._cameraData.radius * Math.sin(this._cameraData.theta) * Math.cos(this._cameraData.phi);
-    this._cameraPosition.z = this._cameraData.radius * Math.sin(this._cameraData.theta) * Math.sin(this._cameraData.phi);
-    this._cameraPosition.y = this._cameraData.radius * Math.cos(this._cameraData.theta);
-
-    store.set('cameraData', this._cameraData);
   }
 
   _initMouse() {
-    const {EVENTS: {MOVE, UP, DOWN, WHEEL, CONTEXT}, BUTTONS: {MAIN, SECOND}} = MOUSE_ENUMS;
+    const {EVENTS: {MOVE, UP, DOWN}, BUTTONS: {MAIN}} = MOUSE_ENUMS;
     mouse.subscribe(MOVE, this._mouseUpdate.bind(this), this._renderer.domElement);
 
-    mouse.subscribe(DOWN, e => {
-      switch (e.button) {
+    mouse.subscribe(DOWN, ({event, position}) => {
+      switch (event.button) {
         case MAIN:
           this._selectAsset(event);
           if (this._selectedAsset) {
@@ -178,35 +160,24 @@ export class EditorView extends View {
             } else if (keyboard.state.ALT) {
               mouseData.dragVerticalEnabled = true;
             } else {
-              mouseData.dragDelta = this._getPosition(event).sub(this._selectedAsset.position);
+              mouseData.dragDelta = this._getPosition(position).sub(this._selectedAsset.position);
               mouseData.dragEnabled = true;
             }
           }
           break;
-        case SECOND:
-          this._cameraData.rotationEnabled = true;
-          break;
       }
     }, this._renderer.domElement);
 
-    mouse.subscribe(UP, e => {
-      switch (e.button) {
+    mouse.subscribe(UP, ({event}) => {
+      switch (event.button) {
         case MAIN:
           mouseData.dragEnabled = false;
           mouseData.rotationEnabled = false;
           mouseData.scaleEnabled = false;
           mouseData.dragVerticalEnabled = false;
           break;
-        case SECOND:
-          this._cameraData.rotationEnabled = false;
-          break;
       }
     }, this._renderer.domElement);
-
-    mouse.subscribe(CONTEXT, e => {
-      e.preventDefault();
-    }, this._renderer.domElement);
-    mouse.subscribe(WHEEL, this._cameraScale.bind(this), this._renderer.domElement);
   }
 
   _initKeyboard() {
@@ -274,10 +245,14 @@ export class EditorView extends View {
         });
         store.set(guiStorageKey, guiConfig);
         store.set(assetsStorageKey, assets);
+        store.set('editor.r1.camera', {
+          position: this._camera.position.toArray(),
+          target: this._controls.target.toArray()
+        });
       },
       load: () => {
         assetsPromise.then(() => {
-          while(this._assets.length){
+          while (this._assets.length) {
             this._scene.remove(this._assets.pop());
           }
           const loadedAssets = store.get(assetsStorageKey);
@@ -397,12 +372,12 @@ export class EditorView extends View {
     });
   }
 
-  _getPosition(event) {
+  _getPosition({x, y}) {
     const vector = new THREE.Vector3();
 
     vector.set(
-      (event.clientX / screen.width) * 2 - 1,
-      -(event.clientY / screen.height) * 2 + 1,
+      (x / screen.width) * 2 - 1,
+      -(y / screen.height) * 2 + 1,
       0.5
     );
 

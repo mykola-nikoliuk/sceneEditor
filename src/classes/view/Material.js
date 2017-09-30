@@ -149,16 +149,25 @@ export class MaterialView extends View {
   _createMaterial() {
     const uniforms = {
       repeat: {value: 1},
-      tex1: {value: new THREE.TextureLoader().load(gravel)},
-      tex1b: {value: new THREE.TextureLoader().load(gravelBump)},
-      tex2: {value: new THREE.TextureLoader().load(ground)},
-      tex2b: {value: new THREE.TextureLoader().load(groundBump)},
+      tex1: {value: new THREE.TextureLoader().load(sand)},
+      tex1b: {value: new THREE.TextureLoader().load(sandBump)},
+      tex2: {value: new THREE.TextureLoader().load(gravel)},
+      tex2b: {value: new THREE.TextureLoader().load(gravelBump)},
       tex3: {value: new THREE.TextureLoader().load(soil)},
       tex3b: {value: new THREE.TextureLoader().load(soilBump)},
-      tex4: {value: new THREE.TextureLoader().load(sand)},
-      tex4b: {value: new THREE.TextureLoader().load(sandBump)},
+      tex4: {value: new THREE.TextureLoader().load(ground)},
+      tex4b: {value: new THREE.TextureLoader().load(groundBump)},
       blend: {value: new THREE.TextureLoader().load(blend)},
     };
+
+    [
+      uniforms.tex1, uniforms.tex1b,
+      uniforms.tex2, uniforms.tex2b,
+      uniforms.tex3, uniforms.tex3b,
+      uniforms.tex4, uniforms.tex4b,
+    ].forEach(texture => {
+      texture.value.wrapS = texture.value.wrapT = THREE.RepeatWrapping;
+    });
 
     return new THREE.ShaderMaterial({
       uniforms,

@@ -1,4 +1,4 @@
-export default THREE => {
+export function addWaterShader(THREE) {
   /**
    * @author jbouny / https://github.com/jbouny
    *

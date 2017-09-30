@@ -1,6 +1,6 @@
 import Zlib from 'lib/zlib.min';
 
-export default THREE => {
+export function addFBXLoader (THREE) {
   /**
    * @author Kyle-Larson https://github.com/Kyle-Larson
    * @author Takahiro https://github.com/takahirox
@@ -1576,19 +1576,7 @@ export default THREE => {
         }
         if (model.parent === null) {
           sceneGraph.add(model);
-        } else {
-          // todo: fix geometry position
-          const vertex_shift = parseFloatArray(node.properties.Lcl_Translation.value);
-          const vertices = model.geometry.attributes.position.array;
-          // const parent_shift = model.parent.position;
-          model.geometry.attributes.position.needsUpdate = true;
-          for (let i = 0; i < vertices.length; i += 3) {
-            vertices[i] -= vertex_shift[0];
-            vertices[i + 1] -= vertex_shift[1];
-            vertices[i + 2] -= vertex_shift[2];
-          }
         }
-
       }
 
 

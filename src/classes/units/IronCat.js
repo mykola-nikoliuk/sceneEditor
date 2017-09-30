@@ -5,7 +5,7 @@ import {normalizeAngle} from 'utils/utils';
 export class IronCat extends Unit {
   static get name() {
     return 'Iron Cat';
-  };
+  }
 
   constructor(mesh) {
     super();
@@ -19,7 +19,7 @@ export class IronCat extends Unit {
           this._parse(mesh);
           resolve(this);
         });
-      }, e => console.log(e), e => console.log(e));
+      });
     }
   }
 

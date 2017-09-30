@@ -5,9 +5,12 @@ export const ENUMS = {
     SECOND: 2
   },
   EVENTS: {
-    MOVE: 'move',
-    UP: 'up',
-    DOWN: 'down',
+    TOUCH_MOVE: 'touchmove',
+    TOUCH_START: 'touchstart',
+    TOUCH_END: 'touchend',
+    DOWN: 'mousedown',
+    UP: 'mouseup',
+    MOVE: 'mousemove',
     WHEEL: 'wheel',
     CONTEXT: 'contextmenu'
   }
@@ -21,38 +24,34 @@ class Mouse {
     };
   }
 
-  _move(e) {
-    if (this._state.subscribers[ENUMS.EVENTS.MOVE]) {
-      this._state.subscribers[ENUMS.EVENTS.MOVE].forEach(callback => {
+  _move(eventType, event) {
+    const position = {
+      x: eventType === ENUMS.EVENTS.TOUCH_MOVE ? event.touches[0].clientX : event.clientX,
+      y: eventType === ENUMS.EVENTS.TOUCH_MOVE ? event.touches[0].clientY : event.clientY
+    };
+    if (this._state.subscribers[eventType]) {
+      this._state.subscribers[eventType].forEach(callback => {
         callback({
-          event: e,
+          event,
           delta: {
-            x: e.screenX - this._state.position.x,
-            y: e.screenY - this._state.position.y
+            x: position.x - this._state.position.x,
+            y: position.y - this._state.position.y
           },
-          position: {
-            x: e.screenX,
-            y: e.screenY
-          }
+          position
         });
       });
     }
-    this._state.position.x = e.screenX;
-    this._state.position.y = e.screenY;
+    this._state.position = position;
   }
 
-  _up(e) {
-    if (this._state.subscribers[ENUMS.EVENTS.UP]) {
-      this._state.subscribers[ENUMS.EVENTS.UP].forEach(callback => {
-        callback(e);
-      });
-    }
-  }
-
-  _down(e) {
-    if (this._state.subscribers[ENUMS.EVENTS.DOWN]) {
-      this._state.subscribers[ENUMS.EVENTS.DOWN].forEach(callback => {
-        callback(e);
+  _defaultEvent(eventType, event) {
+    if (this._state.subscribers[eventType]) {
+      const position = {
+        x: eventType.indexOf('touch') > -1 ? this._state.position.x : event.clientX,
+        y: eventType.indexOf('touch') > -1 ? this._state.position.y : event.clientY
+      };
+      this._state.subscribers[eventType].forEach(callback => {
+        callback({event, position});
       });
     }
   }
@@ -65,60 +64,41 @@ class Mouse {
     }
   }
 
-  _context(e) {
-    if (this._state.subscribers[ENUMS.EVENTS.CONTEXT]) {
-      this._state.subscribers[ENUMS.EVENTS.CONTEXT].forEach(callback => {
-        callback(e);
-      });
-    }
-  }
+  subscribe(eventType, callback, target = document) {
+    let eventSubscribers = this._state.subscribers[eventType];
 
-  subscribe(event, callback, target = document) {
-    let eventSubscribers = this._state.subscribers[event];
-
-    switch (event) {
+    switch (eventType) {
       case ENUMS.EVENTS.MOVE:
+      case ENUMS.EVENTS.TOUCH_MOVE:
         if (!eventSubscribers) {
-          eventSubscribers = this._state.subscribers[event] = [];
-          target.addEventListener('mousemove', this._move.bind(this));
+          eventSubscribers = this._state.subscribers[eventType] = [];
+          target.addEventListener(eventType, this._move.bind(this, eventType));
         }
         eventSubscribers.push(callback);
         break;
 
+      case ENUMS.EVENTS.TOUCH_START:
+      case ENUMS.EVENTS.TOUCH_END:
       case ENUMS.EVENTS.DOWN:
-        if (!eventSubscribers) {
-          eventSubscribers = this._state.subscribers[event] = [];
-          target.addEventListener('mousedown', this._down.bind(this));
-        }
-        eventSubscribers.push(callback);
-        break;
-
       case ENUMS.EVENTS.UP:
+      case ENUMS.EVENTS.CONTEXT:
         if (!eventSubscribers) {
-          eventSubscribers = this._state.subscribers[event] = [];
-          target.addEventListener('mouseup', this._up.bind(this));
+          eventSubscribers = this._state.subscribers[eventType] = [];
+          target.addEventListener(eventType, this._defaultEvent.bind(this, eventType));
         }
         eventSubscribers.push(callback);
         break;
 
       case ENUMS.EVENTS.WHEEL:
         if (!eventSubscribers) {
-          eventSubscribers = this._state.subscribers[event] = [];
-          target.addEventListener('mousewheel', this._wheel.bind(this));
-        }
-        eventSubscribers.push(callback);
-        break;
-
-      case ENUMS.EVENTS.CONTEXT:
-        if (!eventSubscribers) {
-          eventSubscribers = this._state.subscribers[event] = [];
-          target.addEventListener(ENUMS.EVENTS.CONTEXT, this._context.bind(this));
+          eventSubscribers = this._state.subscribers[eventType] = [];
+          target.addEventListener(eventType, this._wheel.bind(this));
         }
         eventSubscribers.push(callback);
         break;
 
       default:
-        console.error(`Mouse() : unknown event "${event}"`);
+        console.error(`Mouse() : unknown event "${eventType}"`);
     }
   }
 }

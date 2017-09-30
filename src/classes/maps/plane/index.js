@@ -30,8 +30,6 @@ light.shadow.mapSize.width = 1024;
 light.shadow.mapSize.height = 1024;
 
 const size = new THREE.Vector3(1024, 128, 1024);
-//todo; TEST
-let time = 0;
 
 export class Plane extends Map {
   constructor({renderer, camera}) {
@@ -49,7 +47,6 @@ export class Plane extends Map {
   }
 
   render(delta) {
-    time += delta;
     super.render(delta);
     light.position.z = Math.sin(Date.now() * 0.001) * 100;
     light.position.x = Math.cos(Date.now() * 0.001) * 100;
