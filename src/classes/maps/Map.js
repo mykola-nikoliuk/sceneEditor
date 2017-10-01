@@ -37,7 +37,7 @@ export default class Map extends Defer {
         this._scene.add(mesh);
         resolve();
       });
-    })
+    });
   }
 
   _createTerrain(...args) {
@@ -47,7 +47,7 @@ export default class Map extends Defer {
         this._scene.add(mesh);
         resolve();
       });
-    })
+    });
   }
 
   _createUnitsFactory(units) {

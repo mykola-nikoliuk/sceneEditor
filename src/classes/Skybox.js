@@ -2,7 +2,7 @@ import THREE from 'lib/three';
 import Mesh from 'common/Mesh';
 
 export default class SkyBox extends Mesh {
-  constructor(images) {
+  constructor(images, size) {
     super();
 
     let resolvePromise = null;
@@ -12,7 +12,7 @@ export default class SkyBox extends Mesh {
       cubeShader.uniforms['tCube'].value = new THREE.CubeTextureLoader()
         .load(images, () => {
           if (this._mesh) {
-            resolve(this._mesh)
+            resolve(this._mesh);
           } else {
             resolvePromise = resolve;
           }
@@ -28,7 +28,7 @@ export default class SkyBox extends Mesh {
     });
 
     this._mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(100000, 100000, 100000),
+      new THREE.BoxGeometry(size, size, size),
       skyBoxMaterial
     );
 

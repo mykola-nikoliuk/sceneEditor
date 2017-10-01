@@ -8,8 +8,8 @@ import front from 'resources/skyboxes/blueSky/front.jpg';
 import back from 'resources/skyboxes/blueSky/back.jpg';
 
 import heightMapUrl from './textures/heightMap.png';
-import textureMapUrl from 'resources/stone-road.png';
-import normalMapUrl from 'resources/stone_road_normal.png';
+import textureMapUrl from 'resources/textures/terrain/stone_road.png';
+import normalMapUrl from 'resources/textures/terrain/stone_road_normal.png';
 import {UNITS} from 'units/common/UnitsFactory';
 
 const skyboxImages = [right, left, top, bottom, front, back];

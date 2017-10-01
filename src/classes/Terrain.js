@@ -1,13 +1,23 @@
 import THREE from './lib/three';
 import ImageGrid from './ImageGrid';
 import map from 'lodash/map';
-import {Defer} from 'general/Defer';
+import waterNormalsMapURL from 'resources/textures/terrain/water_normal_map.jpg';
+import {State} from 'general/State';
 
 const repeat = 16;
 
-export default class Terrain extends Defer {
-  constructor({heightMapUrl, textureMapUrl, normalMapUrl = null}, env, {x: width, y: height, z: depth}, water) {
-    super();
+const state = {
+  water: {
+    color: '#001e0f',
+    alpha: 1
+  }
+};
+
+export default class Terrain extends State {
+  constructor({heightMapURL, textureMapURL, normalMapURL = null}, env, {x: width, y: height, z: depth}, water) {
+    super(state);
+
+    this._env = env;
 
     this._promise = new Promise(resolve => {
       this._width = width;
@@ -18,8 +28,8 @@ export default class Terrain extends Defer {
       this._geometry = new THREE.Geometry();
       this._geometry.faceVertexUvs[0] = [];
 
-      new THREE.TextureLoader().load(textureMapUrl, map => {
-        new THREE.TextureLoader().load(normalMapUrl, normalMap => {
+      new THREE.TextureLoader().load(textureMapURL, map => {
+        new THREE.TextureLoader().load(normalMapURL, normalMap => {
           map.wrapS =
             map.wrapT =
               normalMap.wrapS =
@@ -34,13 +44,13 @@ export default class Terrain extends Defer {
             normalScale: new THREE.Vector2(4, 4)
           });
 
-          this._heightGrid = new ImageGrid(heightMapUrl);
+          this._heightGrid = new ImageGrid(heightMapURL);
 
           this._heightGrid.parse(({x, y, color}) => {
             this._addVertex({x, y, color});
             if (y && x) {
               this._addVertexUV({x, y});
-              this._addFaces({x, y})
+              this._addFaces({x, y});
             }
           }).then(() => {
             this._geometry.computeVertexNormals();
@@ -51,6 +61,7 @@ export default class Terrain extends Defer {
             if (water) {
               this._addWater(env, water).then(resolve.bind(null, this._mesh));
             } else {
+              this._water = null;
               resolve(this._mesh);
             }
           });
@@ -113,6 +124,11 @@ export default class Terrain extends Defer {
     return closestCell;
   }
 
+  stateWillUpdate({water: {color, alpha}}) {
+    this._water.waterColor.set(color);
+    this._water.material.uniforms.alpha.value = alpha;
+  }
+
   render(delta) {
     if (this._water) {
       this._water.material.uniforms.time.value += delta * 0.0005;
@@ -125,7 +141,7 @@ export default class Terrain extends Defer {
       new THREE.Vector3(
         x / this._heightGrid.width * this._width - this._width / 2,
         color / 0xffffff * this._height,
-        y / this._heightGrid.height * this._depth - this._depth / 2,
+        y / this._heightGrid.height * this._depth - this._depth / 2
       )
     );
   }
@@ -190,7 +206,7 @@ export default class Terrain extends Defer {
       [-1, 0], [0, 1], [1, 0], [0, -1]
     ];
     // if (config.neighborhood === NEIGHBORHOOD.MOORE) {
-    offsets.push([-1, 1], [1, 1], [1, -1], [-1, -1])
+    offsets.push([-1, 1], [1, 1], [1, -1], [-1, -1]);
     // }
 
     pathField[start.y] = [];
@@ -256,19 +272,17 @@ export default class Terrain extends Defer {
     return result.reverse();
   }
 
-  _addWater({renderer, camera, light, fog}, {normalMapUrl}) {
+  _addWater({renderer, camera, light, fog}) {
     return new Promise(resolve => {
-      const waterNormals = new THREE.TextureLoader().load(normalMapUrl, resolve);
+      const waterNormals = new THREE.TextureLoader().load(waterNormalsMapURL, resolve);
       waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping;
 
       this._water = new THREE.Water(renderer, camera, this._mesh, {
         textureWidth: 512,
         textureHeight: 512,
         waterNormals: waterNormals,
-        alpha: .8,
         sunDirection: light.position.clone().normalize(),
         sunColor: 0xffffff,
-        waterColor: 0x001e0f,
         distortionScale: 24.0,
         fog
       });

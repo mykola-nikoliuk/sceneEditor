@@ -126,6 +126,8 @@ export function addFBXLoader (THREE) {
               var geometryMap = parseGeometries(FBXTree, connections, deformers);
               var sceneGraph = parseScene(FBXTree, connections, deformers, geometryMap, materials);
 
+              // hack to fix wrong scale
+              sceneGraph.children[0].scale.multiplyScalar(1 / 39.370079040527344);
               resolve(sceneGraph);
             });
         });

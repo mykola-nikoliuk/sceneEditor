@@ -1,5 +1,5 @@
 import THREE from 'lib/three';
-import utils from 'threejs-utils';
+import {GUI} from 'lib/dat.gui';
 import {View} from 'view/View';
 import {screen, SCREEN_EVENTS} from 'general/Screen';
 import store from 'store';
@@ -7,9 +7,13 @@ import map from 'lodash/map';
 import mouse, {ENUMS as MOUSE_ENUMS} from 'input/Mouse';
 import keyboard from 'input/Keyboard';
 import Skybox from 'Skybox';
+import Terrain from '../Terrain';
 import 'style/dat.gui.styl';
 import 'utils/utils';
 import Stats from 'vendors/stats.min';
+import heightMapURL from 'editor/textures/height_map.png';
+import textureMapURL from 'resources/textures/terrain/stone_road.png';
+import normalMapURL from 'resources/textures/terrain/stone_road_normal.png';
 import config from 'editor/editor.json';
 import right from 'resources/skyboxes/blueSky/right.jpg';
 import left from 'resources/skyboxes/blueSky/left.jpg';
@@ -44,7 +48,9 @@ export class EditorView extends View {
     this._createScene();
     this._initMouse();
     this._initKeyboard();
-    this._createGUI();
+    this._createTerrain().then(() => {
+      this._createGUI();
+    });
 
     this._resizeUnsubsribe = screen.on(
       SCREEN_EVENTS.RESIZE,
@@ -52,10 +58,15 @@ export class EditorView extends View {
     );
   }
 
-  render() {
+  render(delta) {
     this._stats.begin();
+
     this._transformControls.enabled && this._transformControls.update();
+    this._skybox.position.copy(this._camera.position);
+    this._terrain.render(delta);
+
     this._renderer.render(this._scene, this._camera);
+
     this._stats.end();
   }
 
@@ -122,7 +133,8 @@ export class EditorView extends View {
 
   _createSkybox(images) {
     return new Promise(resolve => {
-      new Skybox(images).onLoad(mesh => {
+      new Skybox(images, 10000).onLoad(mesh => {
+        this._skybox = mesh;
         this._scene.add(mesh);
         resolve();
       });
@@ -191,7 +203,7 @@ export class EditorView extends View {
   }
 
   _createGUI() {
-    const gui = new utils.dat.GUI();
+    const gui = new GUI();
     const createAsset = {};
     let assetsPromise = new Promise(resolve => resolve());
     let guiConfig = Object.assign({}, {
@@ -267,12 +279,14 @@ export class EditorView extends View {
         });
         const loadedConfig = store.get(guiStorageKey);
         if (loadedConfig) {
-          Object.assign(guiConfig.plane, loadedConfig.plane);
-          Object.assign(guiConfig.lights, loadedConfig.lights);
+          Object.extend(guiConfig, loadedConfig);
           this._guiApply(guiConfig, guiChange);
         }
       }
     };
+
+    const terrain = gui.addState('Terrain', this._terrain);
+    terrain.open();
 
     const plane = gui.addFolder('Plane');
     plane.add(guiConfig.plane, 'size', 1)
@@ -361,9 +375,7 @@ export class EditorView extends View {
   _guiApply(guiConfig, guiChange) {
     Object.keys(guiChange).forEach(key => {
       if (typeof guiChange[key] === 'object') {
-        Object.keys(guiChange[key]).forEach(subKey => {
-          guiChange[key][subKey](guiConfig[key][subKey]);
-        });
+        this._guiApply(guiConfig[key], guiChange[key]);
       } else if (guiConfig[key]) {
         guiChange[key](guiConfig[key]);
       }
@@ -428,5 +440,25 @@ export class EditorView extends View {
         return findRootParent(child.parent);
       }
     }
+  }
+
+  _createTerrain() {
+    const maps = {heightMapURL, textureMapURL, normalMapURL};
+    const size = new THREE.Vector3(2000, 20, 2000);
+    const water = {};
+    const env = {
+      renderer: this._renderer,
+      camera: this._camera,
+      fog: null,
+      light: this._directionalLight
+    };
+
+    return new Promise(resolve => {
+      this._terrain = new Terrain(maps, env, size, water);
+      this._terrain.onLoad(mesh => {
+        this._scene.add(mesh);
+        resolve();
+      });
+    });
   }
 }
