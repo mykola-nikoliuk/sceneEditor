@@ -1,7 +1,7 @@
 /* eslint-env node */
-import * as THREE from 'three/build/three.min';
+import THREE from 'lib/three-lite';
 import './style/index.styl';
-import {screen, SCREEN_EVENTS} from 'general/Screen';
+import {screenService, SCREEN_EVENTS} from 'general/ScreenService';
 import {LoadingView} from 'view/Loading';
 
 let renderer = null;
@@ -13,13 +13,13 @@ createLoadingView();
 
 function createRenderer() {
   renderer = new THREE.WebGLRenderer({antialias: true});
-  renderer.setSize(screen.width, screen.height);
+  renderer.setSize(screenService.width, screenService.height);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.BasicShadowMap;
   document.body.appendChild(renderer.domElement);
 
-  screen.on(SCREEN_EVENTS.RESIZE, () => {
-    renderer.setSize(screen.width, screen.height);
+  screenService.on(SCREEN_EVENTS.RESIZE, () => {
+    renderer.setSize(screenService.width, screenService.height);
   });
 }
 

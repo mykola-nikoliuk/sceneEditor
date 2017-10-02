@@ -1,5 +1,5 @@
 import {Defer} from 'general/Defer';
-import {screen} from 'general/Screen';
+import {screenService} from 'general/ScreenService';
 
 export class View extends Defer {
   constructor(renderer) {
@@ -27,8 +27,9 @@ export class View extends Defer {
     this._scene = null;
   }
 
-  _updateFullScreenView() {
-    this._camera.aspect = screen.aspectRatio;
+  _onResize() {
+    this._camera.aspect = screenService.aspectRatio;
     this._camera.updateProjectionMatrix();
+    this._renderTarget.setSize(screenService.width, screenService.height);
   }
 }

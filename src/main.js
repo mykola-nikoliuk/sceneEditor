@@ -1,7 +1,7 @@
 import THREE from 'three';
 import Stats from 'stats-js';
 // import utils from 'threejs-utils';
-import {screen, SCREEN_EVENTS} from 'general/Screen';
+import {screenService, SCREEN_EVENTS} from 'general/ScreenService';
 
 // todo: remove it
 // import grass from 'resources/terrain/grass.jpg';
@@ -213,7 +213,7 @@ loading();
 // };
 // gui.add(config, 'upload');
 
-renderer.setSize(screen.width, screen.height);
+renderer.setSize(screenService.width, screenService.height);
 document.body.appendChild(renderer.domElement);
 
 renderer.setClearColor(0x222222);
@@ -404,9 +404,9 @@ let moveEnabled = false;
 
 
 function init() {
-  screen.on(SCREEN_EVENTS.RESIZE, () => {
-    const SCREEN_WIDTH = screen.width;
-    const SCREEN_HEIGHT = screen.height;
+  screenService.on(SCREEN_EVENTS.RESIZE, () => {
+    const SCREEN_WIDTH = screenService.width;
+    const SCREEN_HEIGHT = screenService.height;
     renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
   });
   addStats();

@@ -4,7 +4,7 @@ export const SCREEN_EVENTS = {
   RESIZE: Symbol('RESIZE')
 };
 
-class Screen extends EventEmitter {
+class ScreenService extends EventEmitter {
   constructor() {
     super();
 
@@ -27,4 +27,4 @@ class Screen extends EventEmitter {
 
 }
 
-export const screen = new Screen();
+export const screenService = new ScreenService();

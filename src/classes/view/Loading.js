@@ -1,7 +1,7 @@
 import THREE from 'lib/three-lite';
 import {View} from 'view/View';
 import fontURL from 'fonts/helvetiker_regular.typeface.json';
-import {screen, SCREEN_EVENTS} from 'general/Screen'
+import {screenService, SCREEN_EVENTS} from 'general/ScreenService'
 
 const cameraDepth = 100;
 const cubeSize = 10;
@@ -10,13 +10,13 @@ export class LoadingView extends View {
   constructor(renderer) {
     super(renderer);
     this._scene = new THREE.Scene();
-    this._camera = new THREE.PerspectiveCamera(45, screen.aspectRatio, 1, cameraDepth * 2);
+    this._camera = new THREE.PerspectiveCamera(45, screenService.aspectRatio, 1, cameraDepth * 2);
     this._camera.position.z = -cameraDepth;
     this._camera.lookAt(new THREE.Vector3);
     this._createScene();
-    this._resizeUnsubsribe = screen.on(
+    this._resizeUnsubsribe = screenService.on(
       SCREEN_EVENTS.RESIZE,
-      this._updateFullScreenView.bind(this)
+      this._onResize.bind(this)
     );
   }
 

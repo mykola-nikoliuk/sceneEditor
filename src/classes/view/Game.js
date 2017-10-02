@@ -1,6 +1,6 @@
 import THREE from 'lib/three';
 import {View} from 'view/View';
-import {screen, SCREEN_EVENTS} from 'general/Screen';
+import {screenService, SCREEN_EVENTS} from 'general/ScreenService';
 import {Plane} from 'maps/maps';
 import {UNITS} from 'units/common/UnitsFactory';
 import store from 'store';
@@ -28,9 +28,9 @@ export class GameView extends View {
     this._initMouse();
     this._createSelector();
 
-    this._resizeUnsubsribe = screen.on(
+    this._resizeUnsubsribe = screenService.on(
       SCREEN_EVENTS.RESIZE,
-      this._updateFullScreenView.bind(this)
+      this._onResize.bind(this)
     );
   }
 
@@ -52,7 +52,7 @@ export class GameView extends View {
   _createCamera() {
     // todo: change far to logical value
     this._cameraPosition = new THREE.Vector3();
-    this._camera = new THREE.PerspectiveCamera(45, screen.aspectRatio, 1, 1000000);
+    this._camera = new THREE.PerspectiveCamera(45, screenService.aspectRatio, 1, 1000000);
 
     this._cameraData = store.get('cameraData') || {
       theta: Math.PI / 2 + Math.PI / 32,
@@ -235,8 +235,8 @@ export class GameView extends View {
     const vector = new THREE.Vector3();
 
     vector.set(
-      (event.clientX / screen.width) * 2 - 1,
-      -(event.clientY / screen.height) * 2 + 1,
+      (event.clientX / screenService.width) * 2 - 1,
+      -(event.clientY / screenService.height) * 2 + 1,
       0.5,
     );
 
@@ -332,8 +332,8 @@ export class GameView extends View {
     });
     console.log(this._selectedUnits);
     // const mouse = {
-    //   x: ( event.clientX / screen.width ) * 2 - 1,
-    //   y: -( event.clientY / screen.height ) * 2 + 1
+    //   x: ( event.clientX / screenService.width ) * 2 - 1,
+    //   y: -( event.clientY / screenService.height ) * 2 + 1
     // };
     // this._raycaster.setFromCamera(mouse, this._camera);
     // const objects = this._raycaster.intersectObjects(this._unitsMeshes);

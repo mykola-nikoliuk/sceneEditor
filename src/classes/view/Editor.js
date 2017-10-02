@@ -1,7 +1,7 @@
 import THREE from 'lib/three';
 import {GUI} from 'lib/dat.gui';
 import {View} from 'view/View';
-import {screen, SCREEN_EVENTS} from 'general/Screen';
+import {screenService, SCREEN_EVENTS} from 'general/ScreenService';
 import store from 'store';
 import map from 'lodash/map';
 import mouse, {ENUMS as MOUSE_ENUMS} from 'input/Mouse';
@@ -21,6 +21,7 @@ import top from 'resources/skyboxes/blueSky/top.jpg';
 import bottom from 'resources/skyboxes/blueSky/bottom.jpg';
 import front from 'resources/skyboxes/blueSky/front.jpg';
 import back from 'resources/skyboxes/blueSky/back.jpg';
+import {LayersView} from 'view/Layers';
 
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
@@ -42,19 +43,21 @@ export class EditorView extends View {
     this._target = new THREE.Vector3(0, 0, 0);
     this._raycaster = new THREE.Raycaster();
     this._stats = new Stats();
+    this._renderTarget = new THREE.WebGLRenderTarget(screenService.width, screenService.height);
     document.body.appendChild(this._stats.dom);
 
     this._createCamera();
     this._createScene();
+    this._createLayers();
     this._initMouse();
     this._initKeyboard();
     this._createTerrain().then(() => {
       this._createGUI();
     });
 
-    this._resizeUnsubsribe = screen.on(
+    this._resizeUnsubsribe = screenService.on(
       SCREEN_EVENTS.RESIZE,
-      this._updateFullScreenView.bind(this)
+      this._onResize.bind(this)
     );
   }
 
@@ -64,8 +67,9 @@ export class EditorView extends View {
     this._transformControls.enabled && this._transformControls.update();
     this._skybox.position.copy(this._camera.position);
     this._terrain.render(delta);
+    this._renderer.render(this._scene, this._camera, this._renderTarget);
 
-    this._renderer.render(this._scene, this._camera);
+    this._layers.render();
 
     this._stats.end();
   }
@@ -77,7 +81,7 @@ export class EditorView extends View {
   _createCamera() {
     const save = store.get('editor.r1.camera');
     // todo: change far to logical value
-    this._camera = new THREE.PerspectiveCamera(45, screen.aspectRatio, 1, 1000000);
+    this._camera = new THREE.PerspectiveCamera(45, screenService.aspectRatio, 1, 1000000);
     if (save) {
       this._camera.position.fromArray(save.position);
     } else {
@@ -368,6 +372,8 @@ export class EditorView extends View {
     gui.add(guiChange, 'save');
     gui.add(guiChange, 'load');
 
+    gui.close();
+
     guiChange.load();
     this._guiApply(guiConfig, guiChange);
   }
@@ -386,8 +392,8 @@ export class EditorView extends View {
     const vector = new THREE.Vector3();
 
     vector.set(
-      (x / screen.width) * 2 - 1,
-      -(y / screen.height) * 2 + 1,
+      (x / screenService.width) * 2 - 1,
+      -(y / screenService.height) * 2 + 1,
       0.5
     );
 
@@ -460,5 +466,10 @@ export class EditorView extends View {
         resolve();
       });
     });
+  }
+
+  _createLayers() {
+    this._layers = new LayersView(this._renderer);
+    this._layers.addLayer(this._renderTarget);
   }
 }

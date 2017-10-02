@@ -1,6 +1,6 @@
 import THREE from 'lib/three';
 import {View} from 'view/View';
-import {screen, SCREEN_EVENTS} from 'general/Screen';
+import {screenService, SCREEN_EVENTS} from 'general/ScreenService';
 import store from 'store';
 import 'utils/utils';
 import mouse, {ENUMS as MOUSE_ENUMS} from 'input/Mouse';
@@ -41,9 +41,9 @@ export class MaterialView extends View {
     this._createScene();
     this._initMouse();
 
-    this._resizeUnsubsribe = screen.on(
+    this._resizeUnsubsribe = screenService.on(
       SCREEN_EVENTS.RESIZE,
-      this._updateFullScreenView.bind(this)
+      this._onResize.bind(this)
     );
   }
 
@@ -61,7 +61,7 @@ export class MaterialView extends View {
   _createCamera() {
     // todo: change far to logical value
     this._cameraPosition = new THREE.Vector3();
-    this._camera = new THREE.PerspectiveCamera(45, screen.aspectRatio, 1, 1000000);
+    this._camera = new THREE.PerspectiveCamera(45, screenService.aspectRatio, 1, 1000000);
 
     this._cameraData = store.get('cameraData') || {
       theta: Math.PI / 2 - Math.PI / 4,
