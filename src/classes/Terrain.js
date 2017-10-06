@@ -41,7 +41,8 @@ export default class Terrain extends State {
             wireframe: false,
             map: map,
             normalMap: normalMap,
-            normalScale: new THREE.Vector2(4, 4)
+            shininess: 10,
+            normalScale: new THREE.Vector2(1, 1)
           });
 
           this._heightGrid = new ImageGrid(heightMapURL);
@@ -290,7 +291,7 @@ export default class Terrain extends State {
       this._mesh.add(this._water);
 
       const mirrorMesh = new THREE.Mesh(
-        new THREE.PlaneBufferGeometry(this._width, this._depth),
+        new THREE.PlaneBufferGeometry(this._width * 10, this._depth * 10),
         this._water.material
       );
       mirrorMesh.add(this._water);

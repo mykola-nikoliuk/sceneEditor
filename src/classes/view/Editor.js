@@ -65,7 +65,6 @@ export class EditorView extends View {
     this._stats.begin();
 
     this._transformControls.enabled && this._transformControls.update();
-    this._skybox.position.copy(this._camera.position);
     this._terrain.render(delta);
     this._renderer.render(this._scene, this._camera, this._renderTarget);
 
@@ -81,19 +80,22 @@ export class EditorView extends View {
   _createCamera() {
     const save = store.get('editor.r1.camera');
     // todo: change far to logical value
-    this._camera = new THREE.PerspectiveCamera(45, screenService.aspectRatio, 1, 1000000);
+    this._camera = new THREE.PerspectiveCamera(45, screenService.aspectRatio, 1, 1000000000);
+    //debugger;
     if (save) {
       this._camera.position.fromArray(save.position);
+      this._camera.lookAt(new THREE.Vector3().fromArray(save.target));
     } else {
       this._camera.position.set(0, 1000, 1000);
+      this._camera.lookAt(new THREE.Vector3());
     }
-    this._camera.lookAt(new THREE.Vector3());
 
     this._orbitControls = new THREE.OrbitControls(this._camera, this._renderer.domElement, {
       maxPolarAngle: Math.PI / 2
     });
     if (save) {
       this._orbitControls.target = new THREE.Vector3().fromArray(save.target);
+      this._orbitControls.update();
     }
 
     this._transformControls = new THREE.TransformControls(this._camera, this._renderer.domElement);
@@ -137,7 +139,7 @@ export class EditorView extends View {
 
   _createSkybox(images) {
     return new Promise(resolve => {
-      new Skybox(images, 10000).onLoad(mesh => {
+      new Skybox(images, 1000000000).onLoad(mesh => {
         this._skybox = mesh;
         this._scene.add(mesh);
         resolve();
