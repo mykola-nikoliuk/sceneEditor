@@ -65,6 +65,7 @@ export class EditorView extends View {
     this._stats.begin();
 
     this._transformControls.enabled && this._transformControls.update();
+    this._FPCotrols.update(delta);
     this._terrain.render(delta);
     this._renderer.render(this._scene, this._camera, this._renderTarget);
 
@@ -90,13 +91,19 @@ export class EditorView extends View {
       this._camera.lookAt(new THREE.Vector3());
     }
 
-    this._orbitControls = new THREE.OrbitControls(this._camera, this._renderer.domElement, {
-      maxPolarAngle: Math.PI / 2
-    });
-    if (save) {
-      this._orbitControls.target = new THREE.Vector3().fromArray(save.target);
-      this._orbitControls.update();
-    }
+    this._FPCotrols = new THREE.FPControls(this._camera, this._renderer.domElement);
+    this._FPCotrols._speed = 10;
+    //if (save) {
+    //  this._orbitControls.target = new THREE.Vector3().fromArray(save.target);
+    //  this._orbitControls.update();
+    //}
+    //this._orbitControls = new THREE.OrbitControls(this._camera, this._renderer.domElement, {
+    //  maxPolarAngle: Math.PI / 2
+    //});
+    //if (save) {
+    //  this._orbitControls.target = new THREE.Vector3().fromArray(save.target);
+    //  this._orbitControls.update();
+    //}
 
     this._transformControls = new THREE.TransformControls(this._camera, this._renderer.domElement);
     this._transformControls.enabled = false;
