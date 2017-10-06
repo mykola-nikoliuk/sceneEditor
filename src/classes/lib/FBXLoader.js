@@ -485,6 +485,7 @@ export function addFBXLoader (THREE) {
             switch (key.toLowerCase()) {
               case 'tr':
                 material.transparent = true;
+                material.alphaTest = 0.5;
                 break;
               case 'ds':
                 material.side = THREE.DoubleSide;
