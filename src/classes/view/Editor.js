@@ -22,6 +22,7 @@ import bottom from 'resources/skyboxes/blueSky/bottom.jpg';
 import front from 'resources/skyboxes/blueSky/front.jpg';
 import back from 'resources/skyboxes/blueSky/back.jpg';
 import {LayersView} from 'view/Layers';
+import {Canvas} from 'editor/Canvas';
 
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
@@ -36,6 +37,9 @@ const mouseData = {
   dragDelta: null
 };
 
+const uv = new THREE.Vector2(0, 0);
+let drawEnabled = true;
+
 export class EditorView extends View {
   constructor(renderer) {
     super(renderer);
@@ -46,26 +50,40 @@ export class EditorView extends View {
     this._renderTarget = new THREE.WebGLRenderTarget(screenService.width, screenService.height);
     document.body.appendChild(this._stats.dom);
 
-    this._createCamera();
-    this._createScene();
     this._createLayers();
-    this._initMouse();
-    this._initKeyboard();
-    this._createTerrain().then(() => {
-      this._createGUI();
+    this._createCamera();
+    this._promise = this._createScene()
+      .then(this._createTerrain.bind(this))
+      .then(this._createHeightCanvas.bind(this))
+      .then(this._createGUI.bind(this))
+      .then(this._initInput.bind(this))
+      .then(this._test.bind(this));
+  }
+
+  _test() {
+    const material = new THREE.MeshBasicMaterial({
+      // color: 0xff0000,
+      map: this._heightCanvas.getTexture(),
+      // transparent: true
     });
 
-    this._resizeUnsubsribe = screenService.on(
-      SCREEN_EVENTS.RESIZE,
-      this._onResize.bind(this)
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1000, 1000),
+      material
     );
+
+    this._canvasPlane = mesh;
+
+    this._scene.add(mesh);
   }
 
   render(delta) {
     this._stats.begin();
 
+    this._heightCanvas.draw(uv, delta);
+
     this._transformControls.enabled && this._transformControls.update();
-    this._FPCotrols.update(delta);
+    // this._FPCotrols.update(delta);
     this._terrain.render(delta);
     this._renderer.render(this._scene, this._camera, this._renderTarget);
 
@@ -91,19 +109,16 @@ export class EditorView extends View {
       this._camera.lookAt(new THREE.Vector3());
     }
 
-    this._FPCotrols = new THREE.FPControls(this._camera, this._renderer.domElement);
-    this._FPCotrols._speed = 10;
-    //if (save) {
-    //  this._orbitControls.target = new THREE.Vector3().fromArray(save.target);
-    //  this._orbitControls.update();
-    //}
-    //this._orbitControls = new THREE.OrbitControls(this._camera, this._renderer.domElement, {
-    //  maxPolarAngle: Math.PI / 2
-    //});
-    //if (save) {
-    //  this._orbitControls.target = new THREE.Vector3().fromArray(save.target);
-    //  this._orbitControls.update();
-    //}
+    // this._FPCotrols = new THREE.FPControls(this._camera, this._renderer.domElement);
+    // this._FPCotrols._speed = 10;
+
+    this._orbitControls = new THREE.OrbitControls(this._camera, this._renderer.domElement, {
+      maxPolarAngle: Math.PI / 2
+    });
+    if (save) {
+      this._orbitControls.target = new THREE.Vector3().fromArray(save.target);
+      this._orbitControls.update();
+    }
 
     this._transformControls = new THREE.TransformControls(this._camera, this._renderer.domElement);
     this._transformControls.enabled = false;
@@ -111,7 +126,7 @@ export class EditorView extends View {
   }
 
   _createScene() {
-    this._promise = new Promise(resolve => {
+    return new Promise(resolve => {
       const loader = new THREE.TextureLoader();
       const {map, normalMap} = config.plane.material;
 
@@ -140,7 +155,7 @@ export class EditorView extends View {
       this._axis = new THREE.AxisHelper(1);
       this._scene.add(this._axis);
 
-      this._createSkybox(skyboxImages).then(resolve.bind(null, this));
+      this._createSkybox(skyboxImages).then(resolve);
     });
   }
 
@@ -154,31 +169,40 @@ export class EditorView extends View {
     });
   }
 
-  _mouseUpdate({event, delta: {x, y}, position}) {
-    if (event) {
-      if (mouseData.dragEnabled) {
-        this._selectedAsset.position.copy(this._getPosition(position).sub(mouseData.dragDelta));
-      }
-      if (mouseData.rotationEnabled) {
-        this._selectedAsset.rotation.y += x / 200;
-      }
-      if (mouseData.scaleEnabled) {
-        const scale = this._selectedAsset.scale.x - y / 200;
-        this._selectedAsset.scale.set(scale, scale, scale);
-      }
-      if (mouseData.dragVerticalEnabled) {
-        this._selectedAsset.position.y -= y;
-      }
+  _mouseUpdate(event) {
+    const mouse = new THREE.Vector3(event.clientX, event.clientY);
+    const intersects = this._getIntersects(mouse, [this._canvasPlane]);
+
+    if (intersects.length > 0 && intersects[0].uv) {
+      uv.copy(intersects[0].uv);
+      intersects[0].object.material.map.transformUv(uv);
+      // canvas.setCrossPosition( uv.x, uv.y );
     }
   }
 
+  _initInput() {
+    this._initMouse();
+    this._initKeyboard();
+    this._resizeUnsubsribe = screenService.on(
+      SCREEN_EVENTS.RESIZE,
+      this._onResize.bind(this)
+    );
+  }
+
   _initMouse() {
-    const {EVENTS: {DOWN}, BUTTONS: {MAIN}} = MOUSE_ENUMS;
+    const {EVENTS: {DOWN, MOVE}, BUTTONS: {MAIN}} = MOUSE_ENUMS;
 
     mouse.subscribe(DOWN, ({event}) => {
       switch (event.button) {
         case MAIN:
           this._selectAsset(event);
+          break;
+      }
+    }, this._renderer.domElement);
+    mouse.subscribe(MOVE, ({event}) => {
+      switch (event.button) {
+        case MAIN:
+          this._mouseUpdate(event);
           break;
       }
     }, this._renderer.domElement);
@@ -417,16 +441,8 @@ export class EditorView extends View {
   }
 
   _selectAsset(event) {
-    const mouse = new THREE.Vector2(
-      (event.clientX / window.innerWidth ) * 2 - 1,
-      -(event.clientY / window.innerHeight) * 2 + 1
-    );
-
-    this._raycaster.setFromCamera(mouse, this._camera);
-
-    const objects = addChildren(this._assets);
-
-    const intersects = this._raycaster.intersectObjects(objects);
+    const mouse = new THREE.Vector2(event.clientX, event.clientY);
+    const intersects = this._getIntersects(mouse, addChildren(this._assets));
 
     if (intersects.length) {
       this._selectedAsset = findRootParent(intersects[0].object);
@@ -480,5 +496,22 @@ export class EditorView extends View {
   _createLayers() {
     this._layers = new LayersView(this._renderer);
     this._layers.addLayer(this._renderTarget);
+  }
+
+  _getIntersects({x, y}, objects) {
+    const vector = new THREE.Vector2(
+      (x / screenService.width) * 2 - 1,
+      -(y / screenService.height) * 2 + 1,
+    );
+
+    this._raycaster.setFromCamera(vector, this._camera);
+    return this._raycaster.intersectObjects(objects);
+  };
+
+  _createHeightCanvas() {
+    return new Promise(resolve => {
+      this._heightCanvas = new Canvas(1024, 1024);
+      this._heightCanvas.onLoad(resolve);
+    });
   }
 }

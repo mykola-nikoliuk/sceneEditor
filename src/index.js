@@ -30,7 +30,8 @@ function createLoadingView() {
     require.ensure([], require => {
       // const ViewClass = require('view/Material').MaterialView;
       const ViewClass = require('view/Editor').EditorView;
-      new ViewClass(renderer).onLoad(viewInstance => {
+      const viewInstance = new ViewClass(renderer);
+      viewInstance.onLoad(() => {
         view.destroy();
         view = viewInstance;
       });

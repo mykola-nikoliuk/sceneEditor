@@ -180,8 +180,8 @@ export function addFPControls(THREE) {
 
       if (this._orbitEnabled > 0) {
         // todo: optimize
-        this._phi -= event.movementX / 500;
-        this._theta -= event.movementY / 500;
+        this._phi += event.movementX / 500;
+        this._theta += event.movementY / 500;
         this._updateTarget();
       }
 
