@@ -71,9 +71,9 @@ export class Canvas extends Defer {
 
 const brushesPromise = new Promise(resolve => {
   const keys = Object.keys(BRUSHES);
-  let promise = new Promise(resolve => resolve());
+  let promises = [];
   keys.forEach(key => {
-    promise = promise.then(() =>
+    promises.push(
       new Promise(resolve => {
         const image = new Image();
         image.onload = resolve;
@@ -82,5 +82,5 @@ const brushesPromise = new Promise(resolve => {
       })
     );
   });
-  promise.then(resolve);
+  Promise.all(promises).then(resolve);
 });

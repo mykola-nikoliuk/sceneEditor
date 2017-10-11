@@ -294,30 +294,27 @@ export function addFBXLoader (THREE) {
         /**
          * @type {Map<number, THREE.Texture>}
          */
-        var textureMap = new Map();
+        const textureMap = new Map();
 
         if ('Texture' in FBXTree.Objects.subNodes) {
+          const textureNodes = FBXTree.Objects.subNodes.Texture;
+          const textureKeys = Object.keys(textureNodes);
+          const texturePromises = [];
 
-          var textureNodes = FBXTree.Objects.subNodes.Texture;
-          var textureKeys = Object.keys(textureNodes);
+          while (textureKeys.length) {
+            texturePromises.push(new Promise(resolve => {
+              const textureKey = textureKeys.pop();
+              const textureNode = textureNodes[textureKey];
 
-          function nextTexture() {
-            return new Promise(resolve => {
-              if (textureKeys.length === 0) {
-                resolve(textureMap);
-              } else {
-                const textureKey = textureKeys.pop();
-                const textureNode = textureNodes[textureKey];
-                parseTexture(textureNode, loader, imageMap, connections)
-                  .then(texture => {
-                    textureMap.set(parseInt(textureKey), texture);
-                    nextTexture().then(resolve);
-                  });
-              }
-            });
+              parseTexture(textureNode, loader, imageMap, connections)
+                .then(texture => {
+                  textureMap.set(parseInt(textureKey), texture);
+                  resolve();
+                });
+            }));
           }
 
-          nextTexture().then(resolve);
+          Promise.all(texturePromises).then(resolve.bind(null, textureMap));
         } else {
           resolve(textureMap);
         }
@@ -5161,4 +5158,4 @@ export function addFBXLoader (THREE) {
     }
 
   })();
-};
+}

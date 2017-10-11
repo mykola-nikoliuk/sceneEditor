@@ -1,6 +1,6 @@
 export class Defer {
   constructor() {
-    this._promise = new Promise(resolve => resolve(this));
+    this._promise = Promise.resolve(this);
   }
 
   onLoad(callback) {

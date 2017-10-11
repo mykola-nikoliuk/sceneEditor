@@ -50,12 +50,17 @@ export class EditorView extends View {
     this._renderTarget = new THREE.WebGLRenderTarget(screenService.width, screenService.height);
     document.body.appendChild(this._stats.dom);
 
+    const promises = [];
     this._createLayers();
     this._createCamera();
-    this._promise = this._createScene()
-      .then(this._createTerrain.bind(this))
-      .then(this._createHeightCanvas.bind(this))
+    this._createScene();
+    promises.push(this._createSkybox(skyboxImages));
+    promises.push(this._createHeightCanvas());
+    promises.push(this._createTerrain(this)
       .then(this._createGUI.bind(this))
+    );
+
+    this._promise = Promise.all(promises)
       .then(this._initInput.bind(this))
       .then(this._test.bind(this));
   }
@@ -154,8 +159,6 @@ export class EditorView extends View {
 
       this._axis = new THREE.AxisHelper(1);
       this._scene.add(this._axis);
-
-      this._createSkybox(skyboxImages).then(resolve);
     });
   }
 
@@ -242,7 +245,7 @@ export class EditorView extends View {
   _createGUI() {
     const gui = new GUI();
     const createAsset = {};
-    let assetsPromise = new Promise(resolve => resolve());
+    let assetsPromise = Promise.resolve();
     let guiConfig = Object.assign({}, {
       plane: {
         size: 1000,
