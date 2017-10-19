@@ -1,6 +1,7 @@
 import THREE from 'lib/three';
 import {Defer} from 'general/Defer';
 import circle from 'editor/brushes/circle.png';
+import {DataImage} from 'editor/DataImage';
 
 export const BRUSHES = {
   CIRCLE: {
@@ -11,6 +12,10 @@ export const BRUSHES = {
 export class Canvas extends Defer {
   constructor(width = 0, height = 0) {
     super();
+    const brushSize = height;
+    this._canvasDataImage = new DataImage(width, height, DataImage.ENUM.BW);
+    this._brushDataImage = new DataImage(brushSize, brushSize, DataImage.ENUM.BW);
+
     this._canvas = document.createElement('canvas');
     this._canvas.width = width;
     this._canvas.height = height;
@@ -36,19 +41,19 @@ export class Canvas extends Defer {
     return this._texture;
   }
 
-  setSize(width, height) {
-    this._brush.size = height * (this._brush.size / this._height);
-    this._canvas.width = width;
-    this._canvas.height = height;
-  }
+  // setSize(width, height) {
+  //   this._brush.size = height * (this._brush.size / this._height);
+  //   this._canvas.width = width;
+  //   this._canvas.height = height;
+  // }
 
-  setBrushSize(size) {
-    this._brush.size = size * this._height;
-  }
+  // setBrushSize(size) {
+  //   this._brush.size = size * this._height;
+  // }
 
-  setBrushSoft(soft) {
-    this._brush.soft = soft;
-  }
+  // setBrushSoft(soft) {
+  //   this._brush.soft = soft;
+  // }
 
   setBrush(brush) {
     this._brush.type = brush;
@@ -66,6 +71,9 @@ export class Canvas extends Defer {
       size,
       size
     );
+
+    const value = this._brush.soft * (delta / 1000);
+
   }
 }
 
