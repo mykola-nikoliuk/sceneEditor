@@ -206,6 +206,8 @@ export class EditorView extends View {
         this._orbitControls.update();
       }
     });
+
+    1
   }
 
   _createGUI() {
