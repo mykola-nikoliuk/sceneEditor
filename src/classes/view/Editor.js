@@ -207,7 +207,7 @@ export class EditorView extends View {
       }
     });
 
-    123456
+    1234567
   }
 
   _createGUI() {
