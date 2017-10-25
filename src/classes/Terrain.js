@@ -14,10 +14,14 @@ const state = {
 };
 
 export default class Terrain extends State {
-  constructor({heightMapURL, textureMapURL, normalMapURL = null}, env, {x: width, y: height, z: depth}, water) {
+  constructor(
+    {heightMapURL, textureMapURL, normalMapURL = null, heightCanvas = null},
+    env, {x: width, y: height, z: depth}, water) {
+
     super(state);
 
     this._env = env;
+    this._heightCanvas = heightCanvas;
 
     this._promise = new Promise(resolve => {
       this._width = width;
@@ -134,6 +138,15 @@ export default class Terrain extends State {
     if (this._water) {
       this._water.material.uniforms.time.value += delta * 0.0005;
       this._water.render();
+    }
+    if (this._heightCanvas) {
+      const pixels = this._heightCanvas.getData();
+      this._geometry.vertices.forEach((vertex, index) => {
+        const offset = index * 4;
+        vertex.y = pixels.data[offset] / 255 * this._height;
+      });
+
+      this._geometry.verticesNeedUpdate = true;
     }
   }
 

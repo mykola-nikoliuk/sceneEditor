@@ -62,7 +62,7 @@ export class EditorView extends View {
 
     this._promise = Promise.all(promises)
       .then(this._initInput.bind(this))
-      .then(this._test.bind(this));
+      // .then(this._test.bind(this));
   }
 
   _test() {
@@ -174,11 +174,12 @@ export class EditorView extends View {
 
   _mouseUpdate(event) {
     const mouse = new THREE.Vector3(event.clientX, event.clientY);
-    const intersects = this._getIntersects(mouse, [this._canvasPlane]);
+    const intersects = this._getIntersects(mouse, [this._terrain.mesh.children[0]]);
 
     if (intersects.length > 0 && intersects[0].uv) {
       uv.copy(intersects[0].uv);
-      intersects[0].object.material.map.transformUv(uv);
+      // console.log(uv);
+      // intersects[0].object.material.map.transformUv(uv);
       // canvas.setCrossPosition( uv.x, uv.y );
     }
   }
@@ -477,8 +478,13 @@ export class EditorView extends View {
   }
 
   _createTerrain() {
-    const maps = {heightMapURL, textureMapURL, normalMapURL};
-    const size = new THREE.Vector3(2000, 20, 2000);
+    const maps = {
+      heightMapURL,
+      textureMapURL,
+      normalMapURL,
+      heightCanvas: this._heightCanvas
+    };
+    const size = new THREE.Vector3(2000, 400, 2000);
     const water = {};
     const env = {
       renderer: this._renderer,
@@ -513,7 +519,7 @@ export class EditorView extends View {
 
   _createHeightCanvas() {
     return new Promise(resolve => {
-      this._heightCanvas = new Canvas(1024, 1024);
+      this._heightCanvas = new Canvas(64, 64);
       this._heightCanvas.onLoad(resolve);
     });
   }

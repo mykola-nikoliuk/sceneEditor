@@ -21,15 +21,20 @@ export class Canvas extends Defer {
 
     this._brush = {
       type: BRUSHES.CIRCLE,
-      size: height,
+      size: height / 2,
       soft: 1
     };
+    this._delta = 0;
     this._width = width;
     this._height = height;
     this._texture = new THREE.CanvasTexture(this._canvas);
     this._promise = brushesPromise;
     this._promise.then(this.setBrush.bind(this, BRUSHES.CIRCLE));
     document.body.appendChild(this._canvas);
+  }
+
+  getData() {
+    return this._context.getImageData(0, 0, this._width, this._height);
   }
 
   getTexture() {
@@ -55,17 +60,21 @@ export class Canvas extends Defer {
   }
 
   draw(position, delta) {
-    const {x, y} = position;
-    this._texture.needsUpdate = true;
-    this._context.globalAlpha = this._brush.soft * (delta / 1000);
-    const size = this._brush.size;
-    this._context.drawImage(
-      this._brush.type.image,
-      x * this._width - size / 2,
-      y * this._height - size / 2,
-      size,
-      size
-    );
+    this._delta += delta;
+    if (this._delta >= 50) {
+      const {x, y} = position;
+      this._texture.needsUpdate = true;
+      this._context.globalAlpha = this._brush.soft * (this._delta / 1000);
+      const size = this._brush.size;
+      this._context.drawImage(
+        this._brush.type.image,
+        x * this._width - size / 2,
+        y * this._height - size / 2,
+        size,
+        size
+      );
+      this._delta = 0;
+    }
   }
 }
 
