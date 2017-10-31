@@ -23,6 +23,7 @@ import front from 'resources/skyboxes/blueSky/front.jpg';
 import back from 'resources/skyboxes/blueSky/back.jpg';
 import {LayersView} from 'view/Layers';
 import {Canvas} from 'editor/Canvas';
+import {EditorMenu} from 'editor/EditorMenu';
 
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
@@ -30,6 +31,7 @@ const assetsStorageKey = 'editor.assets.r1';
 const skyboxImages = [right, left, top, bottom, front, back];
 
 const mouseData = {
+  heightDrawingEnabled: false,
   dragVerticalEnabled: false,
   scaleEnabled: false,
   rotationEnabled: false,
@@ -58,6 +60,7 @@ export class EditorView extends View {
     promises.push(this._createHeightCanvas());
     promises.push(this._createTerrain(this)
       .then(this._createGUI.bind(this))
+      .then(this._createMenu.bind(this))
     );
 
     this._promise = Promise.all(promises)
@@ -66,28 +69,22 @@ export class EditorView extends View {
   }
 
   _test() {
-    const material = new THREE.MeshBasicMaterial({
-      // color: 0xff0000,
-      map: this._heightCanvas.getTexture(),
-      // transparent: true
-    });
 
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(1000, 1000),
-      material
-    );
+  }
 
-    this._canvasPlane = mesh;
+  update(delta) {
+    if (this._menu.mode === EditorMenu.MODES.TERRAIN_HEIGHT && mouseData.heightDrawingEnabled) {
+      this._heightCanvas.draw(uv, delta, keyboard.state.CTRL);
+    }
 
-    this._scene.add(mesh);
+    this._transformControls.enabled && this._transformControls.update();
+
+    this._menu.update();
   }
 
   render(delta) {
     this._stats.begin();
 
-    this._heightCanvas.draw(uv, delta);
-
-    this._transformControls.enabled && this._transformControls.update();
     // this._FPCotrols.update(delta);
     this._terrain.render(delta);
     this._renderer.render(this._scene, this._camera, this._renderTarget);
@@ -133,22 +130,9 @@ export class EditorView extends View {
   _createScene() {
     return new Promise(resolve => {
       const loader = new THREE.TextureLoader();
-      const {map, normalMap} = config.plane.material;
 
       this._assets = [];
       this._selectedAsset = null;
-
-      this._plane = new THREE.Mesh(
-        new THREE.PlaneGeometry(1, 1),
-        new THREE.MeshPhongMaterial({
-          map: map && loader.load(assetsContext + map),
-          normalMap: normalMap && loader.load(assetsContext + normalMap)
-        })
-      );
-      map && (this._plane.material.map.wrapS = this._plane.material.map.wrapT = THREE.RepeatWrapping);
-      normalMap && (this._plane.material.normalMap.wrapS = this._plane.material.normalMap.wrapT = THREE.RepeatWrapping);
-      this._plane.rotation.x = -Math.PI / 2;
-      this._scene.add(this._plane);
 
       this._ambientLight = new THREE.AmbientLight(0xffffff, 1);
       this._scene.add(this._ambientLight);
@@ -156,10 +140,12 @@ export class EditorView extends View {
       this._directionalLight = new THREE.DirectionalLight(0xffffff, 1);
       this._directionalLight.position.set(1, 1, 1);
       this._scene.add(this._directionalLight);
-
-      this._axis = new THREE.AxisHelper(1);
-      this._scene.add(this._axis);
     });
+  }
+
+  _createMenu() {
+    this._menu = new EditorMenu(this._camera);
+    this._scene.add(this._menu.mesh)
   }
 
   _createSkybox(images) {
@@ -172,18 +158,6 @@ export class EditorView extends View {
     });
   }
 
-  _mouseUpdate(event) {
-    const mouse = new THREE.Vector3(event.clientX, event.clientY);
-    const intersects = this._getIntersects(mouse, [this._terrain.mesh.children[0]]);
-
-    if (intersects.length > 0 && intersects[0].uv) {
-      uv.copy(intersects[0].uv);
-      // console.log(uv);
-      // intersects[0].object.material.map.transformUv(uv);
-      // canvas.setCrossPosition( uv.x, uv.y );
-    }
-  }
-
   _initInput() {
     this._initMouse();
     this._initKeyboard();
@@ -194,15 +168,21 @@ export class EditorView extends View {
   }
 
   _initMouse() {
-    const {EVENTS: {DOWN, MOVE}, BUTTONS: {MAIN}} = MOUSE_ENUMS;
+    const {EVENTS: {DOWN, MOVE, UP}, BUTTONS: {MAIN}} = MOUSE_ENUMS;
 
     mouse.subscribe(DOWN, ({event}) => {
-      switch (event.button) {
-        case MAIN:
-          this._selectAsset(event);
-          break;
+      const intersects = this._getIntersects(event, this._menu.mesh.children);
+      if (intersects.length) {
+        this._menu.onClick(intersects);
+      } else {
+        switch (event.button) {
+          case MAIN:
+            this._mouseDown(event);
+            break;
+        }
       }
     }, this._renderer.domElement);
+
     mouse.subscribe(MOVE, ({event}) => {
       switch (event.button) {
         case MAIN:
@@ -210,6 +190,51 @@ export class EditorView extends View {
           break;
       }
     }, this._renderer.domElement);
+
+    mouse.subscribe(UP, ({event}) => {
+      switch (event.button) {
+        case MAIN:
+          this._mouseUp(event);
+          break;
+      }
+    }, this._renderer.domElement);
+  }
+
+  _mouseDown(event) {
+    switch (this._menu.mode) {
+      case EditorMenu.MODES.TERRAIN_HEIGHT:
+        const intersects = this._getIntersects(event, [this._terrain.mesh.children[0]]);
+        if (intersects.length) {
+          uv.copy(intersects[0].uv);
+          mouseData.heightDrawingEnabled = true;
+        }
+        break;
+      case EditorMenu.MODES.EDIT_ASSETS:
+        this._selectAsset(event);
+        break;
+    }
+  }
+
+  _mouseUpdate(event) {
+    switch (this._menu.mode) {
+      case EditorMenu.MODES.TERRAIN_HEIGHT:
+        if (mouseData.heightDrawingEnabled) {
+          const intersects = this._getIntersects(event, [this._terrain.mesh.children[0]]);
+          if (intersects.length > 0 && intersects[0].uv) {
+            uv.copy(intersects[0].uv);
+          }
+        }
+        break;
+    }
+  }
+
+  _mouseUp(event) {
+    switch (this._menu.mode) {
+      case EditorMenu.MODES.TERRAIN_HEIGHT:
+        mouseData.heightDrawingEnabled = false;
+        this._selectAsset(event);
+        break;
+    }
   }
 
   _initKeyboard() {
@@ -248,10 +273,6 @@ export class EditorView extends View {
     const createAsset = {};
     let assetsPromise = Promise.resolve();
     let guiConfig = Object.assign({}, {
-      plane: {
-        size: 1000,
-        texture_repeat: 1,
-      },
       lights: {
         ambient_color: '#ffffff',
         directional_color: '#ffffff',
@@ -261,17 +282,6 @@ export class EditorView extends View {
     }, store.get(guiStorageKey));
 
     const guiChange = {
-      plane: {
-        size: value => {
-          this._axis.scale.set(value, value, value);
-          this._plane.scale.set(value, value, value);
-        },
-        texture_repeat: value => {
-          const {map, normalMap} = this._plane.material;
-          map && map.repeat.set(value, value);
-          normalMap && normalMap.repeat.set(value, value);
-        }
-      },
       lights: {
         ambient_color: value => {
           this._ambientLight.color.set(value);
@@ -323,20 +333,17 @@ export class EditorView extends View {
           Object.extend(guiConfig, loadedConfig);
           this._guiApply(guiConfig, guiChange);
         }
+      },
+      reset: () => {
+        if (confirm('Are you really want to reset editor?\nAll data will be erased!')) {
+          localStorage.clear();
+          location.reload();
+        }
       }
     };
 
-    const terrain = gui.addState('Terrain', this._terrain);
-    terrain.open();
-
-    const plane = gui.addFolder('Plane');
-    plane.add(guiConfig.plane, 'size', 1)
-      .onChange(guiChange.plane.size)
-      .listen();
-    plane.add(guiConfig.plane, 'texture_repeat', 1, 24)
-      .step(1)
-      .onChange(guiChange.plane.texture_repeat)
-      .listen();
+    gui.addState('Map', this._terrain);
+    gui.addState('Brush', this._heightCanvas);
 
     const lights = gui.addFolder('Lights');
     lights.addColor(guiConfig.lights, 'ambient_color')
@@ -408,8 +415,7 @@ export class EditorView extends View {
 
     gui.add(guiChange, 'save');
     gui.add(guiChange, 'load');
-
-    gui.close();
+    gui.add(guiChange, 'reset');
 
     guiChange.load();
     this._guiApply(guiConfig, guiChange);
@@ -445,8 +451,7 @@ export class EditorView extends View {
   }
 
   _selectAsset(event) {
-    const mouse = new THREE.Vector2(event.clientX, event.clientY);
-    const intersects = this._getIntersects(mouse, addChildren(this._assets));
+    const intersects = this._getIntersects(event, addChildren(this._assets));
 
     if (intersects.length) {
       this._selectedAsset = findRootParent(intersects[0].object);
@@ -507,7 +512,8 @@ export class EditorView extends View {
     this._layers.addLayer(this._renderTarget);
   }
 
-  _getIntersects({x, y}, objects) {
+  _getIntersects(event, objects) {
+    const {x, y} = new THREE.Vector2(event.clientX, event.clientY);
     const vector = new THREE.Vector2(
       (x / screenService.width) * 2 - 1,
       -(y / screenService.height) * 2 + 1,

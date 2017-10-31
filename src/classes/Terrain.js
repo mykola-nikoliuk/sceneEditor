@@ -3,13 +3,20 @@ import ImageGrid from './ImageGrid';
 import map from 'lodash/map';
 import waterNormalsMapURL from 'resources/textures/terrain/water_normal_map.jpg';
 import {State} from 'general/State';
+import {RangeNumber} from 'common/RangeNumber';
 
 const repeat = 16;
 
 const state = {
   water: {
+    enabled: false,
     color: '#001e0f',
-    alpha: 1
+    alpha: new RangeNumber(0.6, 0, 1, 0.01),
+    height: new RangeNumber(0, 0, 1, 0.01)
+  },
+  terrain: {
+    size: new RangeNumber(2000, 100, 5000, 10),
+    height: new RangeNumber(400, 100, 1000, 10)
   }
 };
 
@@ -46,7 +53,8 @@ export default class Terrain extends State {
             map: map,
             normalMap: normalMap,
             shininess: 10,
-            normalScale: new THREE.Vector2(1, 1)
+            normalScale: new THREE.Vector2(1, 1),
+            side: THREE.DoubleSide
           });
 
           this._heightGrid = new ImageGrid(heightMapURL);
@@ -59,9 +67,10 @@ export default class Terrain extends State {
             }
           }).then(() => {
             this._geometry.computeVertexNormals();
-            const terrainMesh = new THREE.Mesh(this._geometry, material);
-            this._mesh.add(terrainMesh);
+            const terrainMesh = this._terrain = new THREE.Mesh(this._geometry, material);
+            terrainMesh.scale.set(width, height, depth);
             terrainMesh.receiveShadow = true;
+            this._mesh.add(terrainMesh);
 
             if (water) {
               this._addWater(env, water).then(resolve.bind(null, this._mesh));
@@ -129,9 +138,21 @@ export default class Terrain extends State {
     return closestCell;
   }
 
-  stateWillUpdate({water: {color, alpha}}) {
-    this._water.waterColor.set(color);
-    this._water.material.uniforms.alpha.value = alpha;
+  stateWillUpdate({water: {color, alpha, height, enabled}, terrain}) {
+    this._height = terrain.height.value;
+    if (enabled) {
+      this._mesh.add(this._waterMirror);
+      this._water.waterColor.set(color);
+      this._water.material.uniforms.alpha.value = alpha.value;
+      this._waterMirror.position.y = height.value * terrain.height.value;
+    } else {
+      this._mesh.remove(this._waterMirror);
+    }
+    this._terrain.scale.set(
+      terrain.size.value,
+      terrain.height.value,
+      terrain.size.value
+    );
   }
 
   render(delta) {
@@ -143,8 +164,9 @@ export default class Terrain extends State {
       const pixels = this._heightCanvas.getData();
       this._geometry.vertices.forEach((vertex, index) => {
         const offset = index * 4;
-        vertex.y = pixels.data[offset] / 255 * this._height;
+        vertex.y = pixels.data[offset] / 255;
       });
+      this._geometry.computeVertexNormals();
 
       this._geometry.verticesNeedUpdate = true;
     }
@@ -153,9 +175,9 @@ export default class Terrain extends State {
   _addVertex({x, y, color}) {
     this._geometry.vertices.push(
       new THREE.Vector3(
-        x / this._heightGrid.width * this._width - this._width / 2,
-        color / 0xffffff * this._height,
-        y / this._heightGrid.height * this._depth - this._depth / 2
+        x / this._heightGrid.width - 0.5,
+        color / 0xffffff,
+        y / this._heightGrid.height - 0.5
       )
     );
   }
@@ -301,16 +323,15 @@ export default class Terrain extends State {
         fog
       });
 
-      this._mesh.add(this._water);
-
-      const mirrorMesh = new THREE.Mesh(
+      const mirrorMesh = this._waterMirror = new THREE.Mesh(
         new THREE.PlaneBufferGeometry(this._width * 10, this._depth * 10),
         this._water.material
       );
       mirrorMesh.add(this._water);
       mirrorMesh.rotation.x = -Math.PI * 0.5;
-      mirrorMesh.position.y = 0.15 * this._height;
-      this._mesh.add(mirrorMesh);
+      mirrorMesh.position.y = state.water.height.value * this._state.terrain.height.value;
+
+      this._state.water.enabled && this._mesh.add(mirrorMesh);
     });
   }
 }

@@ -21,6 +21,8 @@ export class View extends Defer {
     this._renderer.render(this._scene, this._camera);
   }
 
+  update() {}
+
   destroy() {
     this._scene.dispose(true);
     this._camera = null;

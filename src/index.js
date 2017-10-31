@@ -43,6 +43,9 @@ function render(timestamp) {
   const delta = timestamp - previousTimestamp;
   previousTimestamp = timestamp;
 
-  view && view.render(delta);
+  if (view) {
+    view.update(delta);
+    view.render(delta);
+  }
   requestAnimationFrame(render);
 }
