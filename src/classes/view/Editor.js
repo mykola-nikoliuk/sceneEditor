@@ -48,6 +48,7 @@ export class EditorView extends View {
     this._scene = new THREE.Scene();
     this._target = new THREE.Vector3(0, 0, 0);
     this._raycaster = new THREE.Raycaster();
+    this._mixers = [];
     this._stats = new Stats();
     this._renderTarget = new THREE.WebGLRenderTarget(screenService.width, screenService.height);
     document.body.appendChild(this._stats.dom);
@@ -58,10 +59,10 @@ export class EditorView extends View {
     this._createScene();
     promises.push(this._createSkybox(skyboxImages));
     promises.push(this._createHeightCanvas());
-    promises.push(this._createTerrain(this)
-      .then(this._createGUI.bind(this))
-      .then(this._createMenu.bind(this))
-    );
+    //promises.push(/*this._createTerrain(this)*/
+      this._createGUI();
+      this._createMenu();
+    //);
 
     this._promise = Promise.all(promises)
       .then(this._initInput.bind(this))
@@ -76,6 +77,7 @@ export class EditorView extends View {
     if (this._menu.mode === EditorMenu.MODES.TERRAIN_HEIGHT && mouseData.heightDrawingEnabled) {
       this._heightCanvas.draw(uv, delta, keyboard.state.CTRL);
     }
+    this._mixers.forEach(mixer => mixer.update(delta / 1000));
 
     this._transformControls.enabled && this._transformControls.update();
 
@@ -86,7 +88,7 @@ export class EditorView extends View {
     this._stats.begin();
 
     // this._FPCotrols.update(delta);
-    this._terrain.render(delta);
+    //this._terrain.render(delta);
     this._renderer.render(this._scene, this._camera, this._renderTarget);
 
     this._layers.render();
@@ -342,7 +344,7 @@ export class EditorView extends View {
       }
     };
 
-    gui.addState('Map', this._terrain);
+    //gui.addState('Map', this._terrain);
     gui.addState('Brush', this._heightCanvas);
 
     const lights = gui.addFolder('Lights');
@@ -365,8 +367,15 @@ export class EditorView extends View {
       assetsPromise = assetsPromise.then(() => {
         return new Promise(resolve => {
           new THREE.FBXLoader().load(assetsContext + config.assets[key], mesh => {
+
+            if (mesh.animations.length) {
+              mesh.mixer = new THREE.AnimationMixer(mesh);
+              this._mixers.push(mesh.mixer);
+              mesh.animation = mesh.mixer.clipAction(mesh.animations[0]).play();
+            }
+
             createAsset[key] = () => {
-              const clone = mesh.clone();
+              const clone = mesh;
               clone.name = key;
               this._assets.push(clone);
               this._scene.add(clone);

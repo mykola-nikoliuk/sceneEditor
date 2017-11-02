@@ -3,6 +3,10 @@
     "Iron cat": "tank/tank.FBX",
     "Iron cat (red)": "tank_red/tank.FBX",
     "Arc": "arc/arc.FBX",
-    "Cube Meter": "cube/cube.FBX"
+    "Fir": "fir/fir.FBX",
+    "Koi": "koi/koi.FBX",
+    "Fern": "fern/fern.FBX",
+    "Cube Meter": "cube/cube.FBX",
+	"Lotus_low": "Lotus_low/Lotus_low.FBX"
   }
 }

@@ -41,8 +41,8 @@ export class EditorMenu extends Mesh {
 
     this._camera = camera;
     this._mesh = group;
-    this._selectedIndex = 0;
-    this._mode = EditorMenu.MODES.TERRAIN_HEIGHT;
+    this._selectedIndex = 1;
+    this._mode = EditorMenu.MODES.EDIT_ASSETS;
   }
 
   update() {

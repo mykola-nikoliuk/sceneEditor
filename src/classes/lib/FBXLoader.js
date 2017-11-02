@@ -494,6 +494,10 @@ export function addFBXLoader (THREE) {
         }
       }
 
+      material.transparent = true;
+      material.side = THREE.DoubleSide;
+      material.alphaTest = 0.7;
+
       return material;
 
     }
