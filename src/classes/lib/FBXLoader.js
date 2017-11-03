@@ -127,6 +127,7 @@ export function addFBXLoader (THREE) {
               var sceneGraph = parseScene(FBXTree, connections, deformers, geometryMap, materials);
 
               // hack to fix wrong scale
+
               sceneGraph.children.forEach(child => {
                 child.scale.multiplyScalar(1 / 39.370079040527344);
               });

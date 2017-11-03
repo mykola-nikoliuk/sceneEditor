@@ -24,6 +24,7 @@ import back from 'resources/skyboxes/blueSky/back.jpg';
 import {LayersView} from 'view/Layers';
 import {Canvas} from 'editor/Canvas';
 import {EditorMenu} from 'editor/EditorMenu';
+import {copySkinnedGroup} from 'utils/copySkinnedGroup';
 
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
@@ -68,7 +69,7 @@ export class EditorView extends View {
 
     this._promise = Promise.all(promises)
       .then(this._initInput.bind(this))
-      // .then(this._test.bind(this));
+    // .then(this._test.bind(this));
   }
 
   _test() {
@@ -396,14 +397,30 @@ export class EditorView extends View {
         return new Promise(resolve => {
           new THREE.FBXLoader().load(assetsContext + config.assets[key], mesh => {
 
-            if (mesh.animations.length) {
+            if (mesh.animations && mesh.animations.length) {
               mesh.mixer = new THREE.AnimationMixer(mesh);
               this._mixers.push(mesh.mixer);
-              mesh.mixer.clipAction(mesh.animations[0]).play();
+              mesh.animation = mesh.mixer.clipAction(mesh.animations[0]).play();
+              mesh = {
+                animations: mesh.animations,
+                clone: copySkinnedGroup.bind(null, mesh)
+              };
             }
 
             createAsset[key] = () => {
-              const clone = mesh;
+
+              let clone = mesh.clone();
+
+              if (mesh.animations && mesh.animations.length) {
+                clone.scale.multiplyScalar(1 / 39.370079040527344);
+
+                clone.mixer = new THREE.AnimationMixer(clone.children[1]);
+                this._mixers.push(clone.mixer);
+                const animation = clone.animation = clone.mixer.clipAction(mesh.animations[0]);
+                animation.startAt(-Math.random() * 3);
+                animation.play();
+              }
+
               clone.name = key;
               this._assets.push(clone);
               this._scene.add(clone);
