@@ -52,6 +52,12 @@ export class Canvas extends State {
     return this._context.getImageData(0, 0, this._width, this._height);
   }
 
+  setData(imageData) {
+    const {data, width, height} = imageData;
+    const imageDataInstance = new ImageData(new Uint8ClampedArray(data), width, height);
+    return this._context.putImageData(imageDataInstance, 0, 0);
+  }
+
   getTexture() {
     return this._texture;
   }

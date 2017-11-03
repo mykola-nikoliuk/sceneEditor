@@ -8,10 +8,8 @@ export class State extends Defer {
   }
 
   setState(state) {
-    const newState = {};
-    Object.assign(newState, this._state, state);
-    this.stateWillUpdate(newState, this._state);
-    this._state = state;
+    Object.extend(this._state, state);
+    this.stateWillUpdate(this._state);
     return this;
   }
 

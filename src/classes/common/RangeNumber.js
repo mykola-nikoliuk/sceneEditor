@@ -1,9 +1,14 @@
 export class RangeNumber {
   constructor(value, min = -Infinity, max = Infinity, step) {
-    this._value = value;
-    this._min = min;
-    this._max = max;
-    this._step = step;
+
+    if (value instanceof Array) {
+      RangeNumber.call(this, value);
+    } else {
+      this._value = value;
+      this._min = min;
+      this._max = max;
+      this._step = step;
+    }
   }
 
   set value(value) {
@@ -19,4 +24,13 @@ export class RangeNumber {
   get min() { return this._min; }
   get max() { return this._max; }
   get step() { return this._step; }
+
+  getArray() {
+    return [
+      this._value,
+      this._min,
+      this._max,
+      this._step
+    ];
+  }
 }

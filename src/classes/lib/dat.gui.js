@@ -13,7 +13,8 @@ GUI.prototype.addStateItem = function (name, object, root, folder = this) {
           .name(key)
           .onChange(() => {
             root.setState(root.getState());
-          });
+          })
+          .listen();
       } else if (Object.isObject(item)) {
         this.addStateItem(key, item, root, currentFolder);
       } else {
@@ -27,7 +28,8 @@ GUI.prototype.addStateItem = function (name, object, root, folder = this) {
           currentFolder.add(object, key)
             .onChange(() => {
               root.setState(root.getState());
-            });
+            })
+            .listen();
         }
       }
     }

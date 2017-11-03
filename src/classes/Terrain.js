@@ -5,9 +5,9 @@ import waterNormalsMapURL from 'resources/textures/terrain/water_normal_map.jpg'
 import {State} from 'general/State';
 import {RangeNumber} from 'common/RangeNumber';
 
-const repeat = 16;
+const repeat = 200;
 
-const state = {
+const defaultState = {
   water: {
     enabled: false,
     color: '#001e0f',
@@ -21,12 +21,16 @@ const state = {
 };
 
 export default class Terrain extends State {
-  constructor(
-    {heightMapURL, textureMapURL, normalMapURL = null, heightCanvas = null},
-    env, {x: width, y: height, z: depth}, water) {
-
+  constructor({
+    maps: {heightMapURL, textureMapURL, normalMapURL = null, heightCanvas = null},
+    env,
+    size: {x: width, y: height, z: depth},
+    water,
+    state = {}
+  }) {
+    state = Object.assign(defaultState, state);
     super(state);
-
+    
     this._env = env;
     this._heightCanvas = heightCanvas;
 
@@ -53,7 +57,7 @@ export default class Terrain extends State {
             map: map,
             normalMap: normalMap,
             shininess: 10,
-            normalScale: new THREE.Vector2(1, 1),
+            normalScale: new THREE.Vector2(2, 2),
             side: THREE.DoubleSide
           });
 
@@ -140,15 +144,17 @@ export default class Terrain extends State {
 
   stateWillUpdate({water: {color, alpha, height, enabled}, terrain}) {
     this._height = terrain.height.value;
-    if (enabled) {
-      this._mesh.add(this._waterMirror);
-      this._water.waterColor.set(color);
-      this._water.material.uniforms.alpha.value = alpha.value;
-      this._waterMirror.position.y = height.value * terrain.height.value;
-    } else {
-      this._mesh.remove(this._waterMirror);
+    if (this._mesh && this._water) {
+      if (enabled) {
+        this._mesh.add(this._waterMirror);
+        this._water.waterColor.set(color);
+        this._water.material.uniforms.alpha.value = alpha.value;
+        this._waterMirror.position.y = height.value * terrain.height.value;
+      } else {
+        this._mesh.remove(this._waterMirror);
+      }
     }
-    this._terrain.scale.set(
+    this._terrain && this._terrain.scale.set(
       terrain.size.value,
       terrain.height.value,
       terrain.size.value
@@ -329,7 +335,7 @@ export default class Terrain extends State {
       );
       mirrorMesh.add(this._water);
       mirrorMesh.rotation.x = -Math.PI * 0.5;
-      mirrorMesh.position.y = state.water.height.value * this._state.terrain.height.value;
+      mirrorMesh.position.y = this._state.water.height.value * this._state.terrain.height.value;
 
       this._state.water.enabled && this._mesh.add(mirrorMesh);
     });

@@ -12,8 +12,8 @@ import 'style/dat.gui.styl';
 import 'utils/utils';
 import Stats from 'vendors/stats.min';
 import heightMapURL from 'editor/textures/height_map.png';
-import textureMapURL from 'resources/textures/terrain/stone_road.png';
-import normalMapURL from 'resources/textures/terrain/stone_road_normal.png';
+import textureMapURL from 'resources/textures/terrain/grass.png';
+import normalMapURL from 'resources/textures/terrain/grass_n.png';
 import config from 'editor/editor.json';
 import right from 'resources/skyboxes/blueSky/right.jpg';
 import left from 'resources/skyboxes/blueSky/left.jpg';
@@ -28,6 +28,8 @@ import {EditorMenu} from 'editor/EditorMenu';
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
 const assetsStorageKey = 'editor.assets.r1';
+const statesStorageKey = 'editor.states.r1';
+const terrainHeightStorageKey = 'editor.terrainHeight.r1';
 const skyboxImages = [right, left, top, bottom, front, back];
 
 const mouseData = {
@@ -45,6 +47,7 @@ let drawEnabled = true;
 export class EditorView extends View {
   constructor(renderer) {
     super(renderer);
+    this._mixers = [];
     this._scene = new THREE.Scene();
     this._target = new THREE.Vector3(0, 0, 0);
     this._raycaster = new THREE.Raycaster();
@@ -77,6 +80,7 @@ export class EditorView extends View {
       this._heightCanvas.draw(uv, delta, keyboard.state.CTRL);
     }
 
+    this._mixers.forEach(mixer => mixer.update(delta / 1000));
     this._transformControls.enabled && this._transformControls.update();
 
     this._menu.update();
@@ -297,6 +301,13 @@ export class EditorView extends View {
         }
       },
       save: () => {
+        const stateNames = ['_terrain', '_heightCanvas'];
+        const states = {};
+        stateNames.forEach(stateName => {
+          states[stateName] = Object.toStringTypes(this[stateName].getState());
+        });
+
+
         const assets = map(this._assets, asset => {
           return {
             name: asset.name,
@@ -307,12 +318,31 @@ export class EditorView extends View {
         });
         store.set(guiStorageKey, guiConfig);
         store.set(assetsStorageKey, assets);
+        store.set(statesStorageKey, states);
+        let imageData = this._heightCanvas.getData();
+        store.set(terrainHeightStorageKey, {
+          data: Array.prototype.slice.call(imageData.data),
+          width: imageData.width,
+          height: imageData.height
+        });
         store.set('editor.r1.camera', {
           position: this._camera.position.toArray(),
           target: this._orbitControls.target.toArray()
         });
       },
       load: () => {
+        const states = store.get(statesStorageKey);
+        for (let key in states) {
+          if (states.hasOwnProperty(key)) {
+            this[key].setState(Object.parseStringTypes(states[key]));
+          }
+        }
+
+        const imageData = store.get(terrainHeightStorageKey);
+        if (imageData) {
+          this._heightCanvas.setData(imageData);
+        }
+
         assetsPromise.then(() => {
           while (this._assets.length) {
             this._scene.remove(this._assets.pop());
@@ -365,8 +395,15 @@ export class EditorView extends View {
       assetsPromise = assetsPromise.then(() => {
         return new Promise(resolve => {
           new THREE.FBXLoader().load(assetsContext + config.assets[key], mesh => {
+
+            if (mesh.animations.length) {
+              mesh.mixer = new THREE.AnimationMixer(mesh);
+              this._mixers.push(mesh.mixer);
+              mesh.mixer.clipAction(mesh.animations[0]).play();
+            }
+
             createAsset[key] = () => {
-              const clone = mesh.clone();
+              const clone = mesh;
               clone.name = key;
               this._assets.push(clone);
               this._scene.add(clone);
@@ -499,7 +536,7 @@ export class EditorView extends View {
     };
 
     return new Promise(resolve => {
-      this._terrain = new Terrain(maps, env, size, water);
+      this._terrain = new Terrain({maps, env, size, water});
       this._terrain.onLoad(mesh => {
         this._scene.add(mesh);
         resolve();
