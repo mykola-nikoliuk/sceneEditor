@@ -71,7 +71,7 @@ export function addOrbitControls(THREE) {
       keys: {LEFT: 37, UP: 38, RIGHT: 39, BOTTOM: 40},
 
       // Mouse buttons
-      mouseButtons: {ORBIT: THREE.MOUSE.RIGHT, ZOOM: THREE.MOUSE.MIDDLE, PAN: null}
+      mouseButtons: {ORBIT: THREE.MOUSE.RIGHT, ZOOM: THREE.MOUSE.WHEEL, PAN: THREE.MOUSE.MIDDLE}
     }, options);
 
     this.object = object;
