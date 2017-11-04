@@ -27,6 +27,7 @@ import {Canvas} from 'editor/Canvas';
 import {EditorMenu} from 'editor/EditorMenu';
 import {copySkinnedGroup} from 'utils/copySkinnedGroup';
 import {findRootParent} from 'utils/findRootParent';
+import {getMeshChildrenArray} from 'utils/getMeshChildrenArray';
 
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
@@ -130,6 +131,17 @@ export class EditorView extends View {
     }
 
     this._transformControls = new THREE.TransformControls(this._camera, this._renderer.domElement);
+    this._transformControls.traverse(child => {
+      if (child.material) {
+        child.material.depthTest = false;
+        child.renderOrder = 1;
+      }
+    });
+    this._transformControls.userData.pickers = {
+      translate: this._transformControls.children[0].pickers.children,
+      rotate: this._transformControls.children[1].pickers.children,
+      scale: this._transformControls.children[2].pickers.children
+    };
     this._transformControls.enabled = false;
     this._scene.add(this._transformControls);
   }
@@ -536,30 +548,26 @@ export class EditorView extends View {
   }
 
   _selectAssetByIntersect(event) {
-    const intersects = this._getIntersects(event, addChildren(this._assets));
+    const intersectsTransformControls = this._transformControls.enabled
+      && this._getIntersects(event, this._transformControls.userData.pickers[this._transformControls.getMode()]).length > 0;
 
-    if (intersects.length) {
-      this._selectAsset(intersects[0].object);
-      this._deselectSpawnAsset();
-    } else {
-      if (this._spawnAsset) {
-        const asset = this._spawnConstructor();
-        asset.position.copy(this._spawnAsset.position);
-        this._assets.push(asset);
-        this._scene.add(asset);
-      }
-    }
+    console.log(this._transformControls.getMode());
+    console.log(this._getIntersects(event, this._transformControls.userData.pickers[this._transformControls.getMode()]));
+    if (!intersectsTransformControls) {
 
-    function addChildren(children, objects = []) {
-      children.forEach(child => {
-        if (objects.indexOf(child) === -1) {
-          if (child instanceof THREE.Mesh) {
-            objects.push(child);
-          }
-          addChildren(child.children, objects);
+      const intersects = this._getIntersects(event, getMeshChildrenArray(this._assets));
+
+      if (intersects.length) {
+        this._selectAsset(intersects[0].object);
+        this._deselectSpawnAsset();
+      } else {
+        if (this._spawnAsset) {
+          const asset = this._spawnConstructor();
+          asset.position.copy(this._spawnAsset.position);
+          this._assets.push(asset);
+          this._scene.add(asset);
         }
-      });
-      return objects;
+      }
     }
   }
 
