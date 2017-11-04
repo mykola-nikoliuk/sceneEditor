@@ -4,6 +4,7 @@ import {View} from 'view/View';
 import {screenService, SCREEN_EVENTS} from 'general/ScreenService';
 import store from 'store';
 import map from 'lodash/map';
+import each from 'lodash/each';
 import mouse, {ENUMS as MOUSE_ENUMS} from 'input/Mouse';
 import keyboard from 'input/Keyboard';
 import Skybox from 'Skybox';
@@ -276,7 +277,8 @@ export class EditorView extends View {
   _createGUI() {
     const gui = new GUI();
     const createAsset = {};
-    let assetsPromise = Promise.resolve();
+    const assetsPromises = [];
+    let assetsPromise = null;
     let guiConfig = Object.assign({}, {
       lights: {
         ambient_color: '#ffffff',
@@ -392,46 +394,8 @@ export class EditorView extends View {
 
     const spawn = gui.addFolder('Spawn asset');
 
-    Object.keys(config.assets).forEach(key => {
-      assetsPromise = assetsPromise.then(() => {
-        return new Promise(resolve => {
-          new THREE.FBXLoader().load(assetsContext + config.assets[key], mesh => {
-
-            if (mesh.animations && mesh.animations.length) {
-              mesh.mixer = new THREE.AnimationMixer(mesh);
-              this._mixers.push(mesh.mixer);
-              mesh.animation = mesh.mixer.clipAction(mesh.animations[0]).play();
-              mesh = {
-                animations: mesh.animations,
-                clone: copySkinnedGroup.bind(null, mesh)
-              };
-            }
-
-            createAsset[key] = () => {
-
-              let clone = mesh.clone();
-
-              if (mesh.animations && mesh.animations.length) {
-                clone.scale.multiplyScalar(1 / 39.370079040527344);
-
-                clone.mixer = new THREE.AnimationMixer(clone.children[1]);
-                this._mixers.push(clone.mixer);
-                const animation = clone.animation = clone.mixer.clipAction(mesh.animations[0]);
-                animation.startAt(-Math.random() * 3);
-                animation.play();
-              }
-
-              clone.name = key;
-              this._assets.push(clone);
-              this._scene.add(clone);
-              return clone;
-            };
-            spawn.add(createAsset, key);
-            resolve();
-          });
-        });
-      });
-    });
+    this._loadAssets(config.assets, spawn, assetsPromises, createAsset);
+    assetsPromise = Promise.all(assetsPromises);
 
     createAsset['Cube'] = () => {
       const clone = new THREE.Mesh(
@@ -473,6 +437,73 @@ export class EditorView extends View {
 
     guiChange.load();
     this._guiApply(guiConfig, guiChange);
+  }
+
+  _loadAssets(assetsURLs, gui, promises, assets) {
+    each(assetsURLs, (value, key) => {
+      if (typeof value === 'string') {
+        promises.push(new Promise(resolve => {
+          new THREE.FBXLoader().load(assetsContext + value, mesh => {
+
+            if (mesh.animations && mesh.animations.length) {
+              mesh.mixer = new THREE.AnimationMixer(mesh);
+              this._mixers.push(mesh.mixer);
+              mesh.animation = mesh.mixer.clipAction(mesh.animations[0]).play();
+              mesh = {
+                animations: mesh.animations,
+                clone: copySkinnedGroup.bind(null, mesh)
+              };
+            }
+
+            assets[key] = () => {
+
+              let clone = mesh.clone();
+
+              if (mesh.animations && mesh.animations.length) {
+                // todo: fix that hack somehow
+                clone.scale.multiplyScalar(1 / 39.370079040527344);
+
+                clone.mixer = new THREE.AnimationMixer(clone.children[1]);
+                this._mixers.push(clone.mixer);
+                const animation = clone.animation = clone.mixer.clipAction(mesh.animations[0]);
+                animation.startAt(-Math.random() * 3);
+                animation.play();
+              }
+
+              clone.name = key;
+              this._assets.push(clone);
+              this._scene.add(clone);
+              return clone;
+            };
+
+            if (mesh.animations.length) {
+              setTimeout(() => {
+                const width = 10;
+                const height = 10;
+                const offset = 10;
+                const randomPercent = 0.6;
+                for (let x = 0; x < width; x++) {
+                  for (let y = 0; y < height; y++) {
+                    const mesh = assets[key]();
+                    mesh.position
+                      .set(
+                        x - width / 2 + Math.random() * randomPercent,
+                        0,
+                        y - height / 2 + Math.random() * randomPercent)
+                      .multiplyScalar(offset);
+                  }
+                }
+              }, 1000);
+            }
+
+            gui.add(assets, key);
+            resolve();
+          });
+        }));
+      } else {
+        this._loadAssets(value, gui.addFolder(key), promises, assets);
+      }
+    });
   }
 
   _guiApply(guiConfig, guiChange) {
