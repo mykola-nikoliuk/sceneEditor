@@ -12,7 +12,7 @@ createRenderer();
 createLoadingView();
 
 function createRenderer() {
-  renderer = new THREE.WebGLRenderer({antialias: true});
+  renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
   renderer.setSize(screenService.width, screenService.height);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.BasicShadowMap;

@@ -1,5 +1,8 @@
-export class Defer {
+import {EventEmitter} from 'general/EventEmitter';
+
+export class Defer extends EventEmitter {
   constructor() {
+    super();
     this._promise = Promise.resolve(this);
   }
 

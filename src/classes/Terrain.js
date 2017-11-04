@@ -71,6 +71,7 @@ export default class Terrain extends State {
             }
           }).then(() => {
             this._geometry.computeVertexNormals();
+            this._geometry.computeFaceNormals();
             const terrainMesh = this._terrain = new THREE.Mesh(this._geometry, material);
             terrainMesh.scale.set(width, height, depth);
             terrainMesh.receiveShadow = true;
@@ -173,6 +174,7 @@ export default class Terrain extends State {
         vertex.y = pixels.data[offset] / 255;
       });
       this._geometry.computeVertexNormals();
+      this._geometry.computeFaceNormals();
 
       this._geometry.verticesNeedUpdate = true;
     }

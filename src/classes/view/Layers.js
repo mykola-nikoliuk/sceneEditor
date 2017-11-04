@@ -19,7 +19,8 @@ export class LayersView extends View {
 
   addLayer(renderTarget) {
     const mesh = new THREE.Mesh(this._plane, new THREE.MeshBasicMaterial({
-      map: renderTarget.texture
+      map: renderTarget.texture,
+      transparent: true
     }));
     const layer = {
       renderTarget,

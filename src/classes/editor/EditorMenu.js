@@ -11,7 +11,7 @@ export class EditorMenu extends Mesh {
     super();
     const itemSize = 0.14;
     const itemsMargin = 0.05;
-    const items = [{
+    const items = this.items = [{
       mode: EditorMenu.MODES.TERRAIN_HEIGHT,
       texture: terrainHeightIcon
     },{
@@ -41,8 +41,8 @@ export class EditorMenu extends Mesh {
 
     this._camera = camera;
     this._mesh = group;
-    this._selectedIndex = 0;
-    this._mode = EditorMenu.MODES.TERRAIN_HEIGHT;
+    this._selectedIndex = 1;
+    this._mode = items[this._selectedIndex].mode;
   }
 
   update() {
@@ -68,12 +68,24 @@ export class EditorMenu extends Mesh {
 
   onClick(intersects) {
     const item = intersects[0].object;
-    this._selectedIndex = this._mesh.children.indexOf(item);
-    this._mode = item.mode;
+    this.mode = item.mode;
   }
 
   get mode() {
     return this._mode;
+  }
+
+  set mode(mode) {
+    if (this._mode !== mode) {
+      this._mode = mode;
+      this.emit(EditorMenu.EVENTS.MODE_CHANGED, this._mode);
+    }
+    this.items.forEach((item, index) => {
+      if (mode === item.mode) {
+        this._selectedIndex = index;
+      }
+    });
+    this._mode = mode;
   }
 }
 
@@ -81,4 +93,8 @@ EditorMenu.MODES = {
   TERRAIN_HEIGHT: 1,
   TERRAIN_TEXTURE: 2,
   EDIT_ASSETS: 3
+};
+
+EditorMenu.EVENTS = {
+  MODE_CHANGED: 1
 };

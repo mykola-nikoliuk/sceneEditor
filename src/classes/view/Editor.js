@@ -26,6 +26,7 @@ import {LayersView} from 'view/Layers';
 import {Canvas} from 'editor/Canvas';
 import {EditorMenu} from 'editor/EditorMenu';
 import {copySkinnedGroup} from 'utils/copySkinnedGroup';
+import {findRootParent} from 'utils/findRootParent';
 
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
@@ -55,6 +56,7 @@ export class EditorView extends View {
     this._raycaster = new THREE.Raycaster();
     this._stats = new Stats();
     this._renderTarget = new THREE.WebGLRenderTarget(screenService.width, screenService.height);
+    this._spawnRenderTarget = new THREE.WebGLRenderTarget(screenService.width, screenService.height);
     document.body.appendChild(this._stats.dom);
 
     const promises = [];
@@ -138,6 +140,8 @@ export class EditorView extends View {
 
       this._assets = [];
       this._selectedAsset = null;
+      this._spawnAsset = null;
+      this._spawnConstructor = null;
 
       this._ambientLight = new THREE.AmbientLight(0xffffff, 1);
       this._scene.add(this._ambientLight);
@@ -150,7 +154,8 @@ export class EditorView extends View {
 
   _createMenu() {
     this._menu = new EditorMenu(this._camera);
-    this._scene.add(this._menu.mesh)
+    this._scene.add(this._menu.mesh);
+    this._menu.on(EditorMenu.EVENTS.MODE_CHANGED, this._onModeChanged.bind(this));
   }
 
   _createSkybox(images) {
@@ -161,6 +166,13 @@ export class EditorView extends View {
         resolve();
       });
     });
+  }
+
+  _onModeChanged(mode) {
+    if (mode !== EditorMenu.MODES.EDIT_ASSETS) {
+      this._deselectAsset();
+      this._deselectSpawnAsset();
+    }
   }
 
   _initInput() {
@@ -215,7 +227,7 @@ export class EditorView extends View {
         }
         break;
       case EditorMenu.MODES.EDIT_ASSETS:
-        this._selectAsset(event);
+        this._selectAssetByIntersect(event);
         break;
     }
   }
@@ -231,30 +243,34 @@ export class EditorView extends View {
         }
         break;
     }
+
+    if (this._spawnAsset) {
+      const intersects = this._getIntersects(event, [this._terrain.mesh.children[0]]);
+      if (intersects.length > 0 && intersects[0].uv) {
+        this._spawnAsset.position.copy(intersects[0].point);
+      }
+    }
   }
 
   _mouseUp(event) {
     switch (this._menu.mode) {
       case EditorMenu.MODES.TERRAIN_HEIGHT:
         mouseData.heightDrawingEnabled = false;
-        this._selectAsset(event);
+        this._selectAssetByIntersect(event);
         break;
     }
   }
 
   _initKeyboard() {
     keyboard.on('DELETE', () => {
-      if (this._selectedAsset) {
-        this._scene.remove(this._selectedAsset);
-        this._assets.splice(this._assets.indexOf(this._selectedAsset), 1);
-        this._selectedAsset = null;
-        this._transformControls.detach();
-      }
+      this._scene.remove(this._selectedAsset);
+      this._assets.splice(this._assets.indexOf(this._selectedAsset), 1);
+      this._deselectAsset();
     });
 
     keyboard.on('ESC', () => {
-      this._transformControls.detach();
-      this._transformControls.enabled = false;
+      this._deselectAsset();
+      this._deselectSpawnAsset();
     });
     keyboard.on('T', () => this._transformControls.setMode(THREE.TransformControls.TRANSLATE));
     keyboard.on('R', () => this._transformControls.setMode(THREE.TransformControls.ROTATE));
@@ -356,6 +372,8 @@ export class EditorView extends View {
               mesh.position.fromArray(asset.position);
               mesh.rotation.fromArray(asset.rotation);
               mesh.scale.fromArray(asset.scale);
+              this._scene.add(mesh);
+              this._assets.push(mesh);
             });
           }
           this._selectedAsset = null;
@@ -396,40 +414,6 @@ export class EditorView extends View {
     this._loadAssets(config.assets, spawn, assetsPromises, createAsset);
     assetsPromise = Promise.all(assetsPromises);
 
-    createAsset['Cube'] = () => {
-      const clone = new THREE.Mesh(
-        new THREE.CubeGeometry(100, 100, 100),
-        new THREE.MeshPhongMaterial({
-          color: Math.random() * 0xffffff,
-          transparent: true,
-          opacity: .5,
-          side: THREE.DoubleSide
-        })
-      );
-      clone.name = 'cube';
-      this._assets.push(clone);
-      this._scene.add(clone);
-      return clone;
-    };
-    spawn.add(createAsset, 'Cube');
-
-    createAsset['Sphere'] = () => {
-      const clone = new THREE.Mesh(
-        new THREE.SphereGeometry(100, 16, 16),
-        new THREE.MeshPhongMaterial({
-          color: Math.random() * 0xffffff,
-          transparent: true,
-          opacity: .5,
-          side: THREE.DoubleSide
-        })
-      );
-      clone.name = 'Sphere';
-      this._assets.push(clone);
-      this._scene.add(clone);
-      return clone;
-    };
-    spawn.add(createAsset, 'Sphere');
-
     gui.add(guiChange, 'save');
     gui.add(guiChange, 'load');
     gui.add(guiChange, 'reset');
@@ -464,18 +448,21 @@ export class EditorView extends View {
 
                 clone.mixer = new THREE.AnimationMixer(clone.children[1]);
                 this._mixers.push(clone.mixer);
-                const animation = clone.animation = clone.mixer.clipAction(mesh.animations[0]);
-                animation.startAt(-Math.random() * 3);
-                animation.play();
+                clone.animation = clone.animation = clone.mixer.clipAction(mesh.animations[0]);
+                clone.animation.startAt(-Math.random() * 3);
+                clone.animation.play();
               }
 
               clone.name = key;
-              this._assets.push(clone);
-              this._scene.add(clone);
+
               return clone;
             };
 
-            gui.add(assets, key);
+            const guiObject = {
+              [key]: this._setSpawnAsset.bind(this, assets[key])
+            };
+
+            gui.add(guiObject, key);
             resolve();
           });
         }));
@@ -483,6 +470,40 @@ export class EditorView extends View {
         this._loadAssets(value, gui.addFolder(key), promises, assets);
       }
     });
+  }
+
+  _setSpawnAsset(createAsset) {
+    if (this._menu.mode !== EditorMenu.MODES.EDIT_ASSETS) {
+      this._menu.mode = EditorMenu.MODES.EDIT_ASSETS;
+    }
+
+    this._deselectAsset();
+    this._deselectSpawnAsset();
+
+    this._spawnAsset = createAsset();
+    this._spawnAsset.traverse(child => {
+      if (child.material) {
+        const material = child.material;
+        const attributes = ['map', 'alphaMap', 'normalMap', 'transparent', 'opacity', 'side'];
+        child.material = new THREE.MeshPhysicalMaterial();
+        attributes.forEach(map => {
+          if (material[map]) child.material[map] = material[map];
+        });
+      }
+    });
+
+    this._spawnConstructor = createAsset;
+    this._scene.add(this._spawnAsset);
+  }
+
+  _deselectSpawnAsset() {
+    if (this._spawnAsset) {
+      this._spawnAsset.traverse(child => {
+        child.material && child.material.dispose();
+      });
+      this._scene.remove(this._spawnAsset);
+      this._spawnAsset = null;
+    }
   }
 
   _guiApply(guiConfig, guiChange) {
@@ -514,15 +535,19 @@ export class EditorView extends View {
     return position.add(dir.multiplyScalar(distance));
   }
 
-  _selectAsset(event) {
+  _selectAssetByIntersect(event) {
     const intersects = this._getIntersects(event, addChildren(this._assets));
 
     if (intersects.length) {
-      this._selectedAsset = findRootParent(intersects[0].object);
-      this._transformControls.attach(this._selectedAsset);
-      this._transformControls.enabled = true;
+      this._selectAsset(intersects[0].object);
+      this._deselectSpawnAsset();
     } else {
-      this._selectedAsset = null;
+      if (this._spawnAsset) {
+        const asset = this._spawnConstructor();
+        asset.position.copy(this._spawnAsset.position);
+        this._assets.push(asset);
+        this._scene.add(asset);
+      }
     }
 
     function addChildren(children, objects = []) {
@@ -536,13 +561,18 @@ export class EditorView extends View {
       });
       return objects;
     }
+  }
 
-    function findRootParent(child) {
-      if (!child.parent || child.parent instanceof THREE.Scene) {
-        return child;
-      } else {
-        return findRootParent(child.parent);
-      }
+  _selectAsset(asset) {
+    this._selectedAsset = findRootParent(asset);
+    this._transformControls.attach(this._selectedAsset);
+    this._transformControls.enabled = true;
+  }
+
+  _deselectAsset() {
+    if (this._selectedAsset) {
+      this._transformControls.enabled = false;
+      this._transformControls.detach();
     }
   }
 
