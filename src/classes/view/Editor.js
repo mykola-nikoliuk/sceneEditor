@@ -446,7 +446,7 @@ export class EditorView extends View {
                 // todo: fix that hack somehow
                 clone.scale.multiplyScalar(1 / 39.370079040527344);
 
-                clone.mixer = new THREE.AnimationMixer(clone.children[1]);
+                clone.mixer = new THREE.AnimationMixer(clone);
                 this._mixers.push(clone.mixer);
                 clone.animation = clone.animation = clone.mixer.clipAction(mesh.animations[0]);
                 clone.animation.startAt(-Math.random() * 3);

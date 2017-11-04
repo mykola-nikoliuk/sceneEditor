@@ -20,8 +20,7 @@ export function copySkinnedGroup(skinnedGroup) {
           // search for root bones and add them to bones with their children
           if (bone.parent === skinnedGroup) {
             // add all effected bones
-            bones.push(...getChildrenArray(cloneGroup.add(bone.clone())))
-            ;
+            bones.push(...getChildrenArray(cloneGroup.add(bone.clone())));
           }
         });
 
@@ -34,13 +33,19 @@ export function copySkinnedGroup(skinnedGroup) {
     }
   });
 
-  function getChildrenArray(bone, children = []) {
-    children.unshift(bone);
-    bone.children.forEach(child => {
-      getChildrenArray(child, children);
-    });
-    return children;
-  }
+  const groupBones = [];
+  skinnedGroup.skeleton.bones.forEach(child => {
+    groupBones.push(cloneGroup.getObjectByName(child.name));
+  });
+  cloneGroup.skeleton = {bones: groupBones};
 
   return cloneGroup;
+}
+
+function getChildrenArray(bone, children = []) {
+  children.unshift(bone);
+  bone.children.forEach(child => {
+    getChildrenArray(child, children);
+  });
+  return children;
 }
