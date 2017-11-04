@@ -1,8 +1,7 @@
 {
   "assets": {
     "units": {
-      "Iron cat": "tank/tank.FBX",
-      "Iron cat (red)": "tank_red/tank.FBX"
+      "Iron cat": "tank/tank.FBX"
     },
     "foliages": {
       "Arc": "arc/arc.FBX",

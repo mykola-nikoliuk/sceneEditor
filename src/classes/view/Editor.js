@@ -561,6 +561,7 @@ export class EditorView extends View {
         this._selectAsset(intersects[0].object);
         this._deselectSpawnAsset();
       } else {
+        this._deselectAsset();
         if (this._spawnAsset) {
           const asset = this._spawnConstructor();
           asset.position.copy(this._spawnAsset.position);
