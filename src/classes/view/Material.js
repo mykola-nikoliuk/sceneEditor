@@ -4,7 +4,6 @@ import {screenService, SCREEN_EVENTS} from 'general/ScreenService';
 import store from 'store';
 import 'utils/utils';
 import mouse, {ENUMS as MOUSE_ENUMS} from 'input/Mouse';
-import Skybox from 'Skybox';
 import 'style/dat.gui.styl';
 import right from 'resources/skyboxes/blueSky/right.jpg';
 import left from 'resources/skyboxes/blueSky/left.jpg';
@@ -89,10 +88,7 @@ export class MaterialView extends View {
 
   _createSkybox(images) {
     return new Promise(resolve => {
-      new Skybox(images).onLoad(mesh => {
-        this._scene.add(mesh);
-        resolve();
-      });
+      this._scene.background = new THREE.CubeTextureLoader().load(images, resolve);
     });
   }
 

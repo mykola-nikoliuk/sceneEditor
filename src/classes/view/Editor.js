@@ -7,7 +7,6 @@ import map from 'lodash/map';
 import each from 'lodash/each';
 import mouse, {ENUMS as MOUSE_ENUMS} from 'input/Mouse';
 import keyboard from 'input/Keyboard';
-import Skybox from 'Skybox';
 import Terrain from '../Terrain';
 import 'style/dat.gui.styl';
 import 'utils/utils';
@@ -174,11 +173,7 @@ export class EditorView extends View {
 
   _createSkybox(images) {
     return new Promise(resolve => {
-      new Skybox(images, 1000000000).onLoad(mesh => {
-        this._skybox = mesh;
-        this._scene.add(mesh);
-        resolve();
-      });
+      this._scene.background = new THREE.CubeTextureLoader().load(images, resolve);
     });
   }
 

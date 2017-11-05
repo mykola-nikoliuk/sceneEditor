@@ -1,4 +1,3 @@
-import Skybox from 'Skybox';
 import THREE from 'lib/three';
 import {Defer} from 'general/Defer';
 import Terrain from '../Terrain';
@@ -33,10 +32,7 @@ export default class Map extends Defer {
 
   _createSkybox(images) {
     return new Promise(resolve => {
-      new Skybox(images).onLoad(mesh => {
-        this._scene.add(mesh);
-        resolve();
-      });
+      this._scene.background = new THREE.CubeTextureLoader().load(images, resolve);
     });
   }
 
