@@ -28,7 +28,7 @@
     "stylus": "^0.54.5",
     "stylus-loader": "^3.0.1",
     "text-loader": "0.0.1",
-    "three": "^0.87.1",
+    "three": "^0.88.0",
     "webpack": "^2.6.1",
     "webpack-cleanup-plugin": "^0.5.1",
     "webpack-dev-server": "^2.8.2"

@@ -28,6 +28,7 @@ import {EditorMenu} from 'editor/EditorMenu';
 import {copySkinnedGroup} from 'utils/copySkinnedGroup';
 import {findRootParent} from 'utils/findRootParent';
 import {getMeshChildrenArray} from 'utils/getMeshChildrenArray';
+import {materialToGUI} from 'utils/materialToGUI';
 
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
@@ -412,7 +413,7 @@ export class EditorView extends View {
     gui.addState('Brush', this._heightCanvas);
 
     const lights = gui.addFolder('Lights')
-      .onChange(gui.touch.bind(gui));
+      .onChange(gui.touch);
     gui.applyFolderState(lights);
 
     lights.addColor(guiConfig.lights, 'ambient_color')
@@ -429,11 +430,28 @@ export class EditorView extends View {
       .listen();
 
     const spawn = gui.addFolder('Spawn asset')
-      .onChange(gui.touch.bind(gui));
+      .onChange(gui.touch);
     gui.applyFolderState(spawn);
 
     this._loadAssets(config.assets, spawn, gui, assetsPromises, createAsset);
     assetsPromise = Promise.all(assetsPromises);
+
+    const materialsGUI = gui.addFolder('Materials')
+      .onChange(gui.touch);
+    gui.applyFolderState(materialsGUI);
+
+    assetsPromise.then(() => {
+      const materialsList = [];
+      each(createAsset, createAsset => {
+        createAsset().traverse(child => {
+          if (child.material && materialsList.indexOf(child.material) === -1) {
+            materialsList.push(child.material);
+            materialToGUI(child.material, gui, materialsGUI, `${child.material.name} [${child.name}]`);
+          }
+        });
+      });
+
+    });
 
     gui.add(guiChange, 'save');
     gui.add(guiChange, 'load');
@@ -489,7 +507,7 @@ export class EditorView extends View {
         }));
       } else {
         const folder = gui.addFolder(key)
-          .onChange(rootGUI.touch.bind(rootGUI));
+          .onChange(rootGUI.touch);
         rootGUI.applyFolderState(folder);
         this._loadAssets(value, folder, rootGUI, promises, assets);
       }

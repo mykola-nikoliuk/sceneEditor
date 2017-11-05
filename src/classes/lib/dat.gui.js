@@ -8,6 +8,7 @@ export class GUI extends dat.GUI {
     super();
     this._foldersState = foldersState || {};
     this.changeListeners = [];
+    this.touch = this.touch.bind(this);
   }
 
   addState(name, root) {
@@ -16,7 +17,7 @@ export class GUI extends dat.GUI {
   }
 
   applyFolderState(folder) {
-    const path = this._getPath(folder).join('.');
+    const path = this._getPath(folder);
     const config = get(this._foldersState, path, null);
     if (config) {
       folder.closed = config.__closed;
@@ -53,7 +54,7 @@ export class GUI extends dat.GUI {
 
   _addStateItem(name, object, root, folder = this) {
     const currentFolder = folder.addFolder(name)
-      .onChange(this.touch.bind(this));
+      .onChange(this.touch);
     this.applyFolderState(currentFolder);
     for (let key in object) {
       if (object.hasOwnProperty(key)) {
