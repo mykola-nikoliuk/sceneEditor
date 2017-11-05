@@ -31,6 +31,7 @@ import {getMeshChildrenArray} from 'utils/getMeshChildrenArray';
 
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
+const guiFoldersStorageKey = 'editor.guiFolders.r1';
 const assetsStorageKey = 'editor.assets.r1';
 const statesStorageKey = 'editor.states.r1';
 const terrainHeightStorageKey = 'editor.terrainHeight.r1';
@@ -302,7 +303,10 @@ export class EditorView extends View {
   }
 
   _createGUI() {
-    const gui = new GUI();
+    const gui = new GUI(store.get(guiFoldersStorageKey))
+      .onChange(() => {
+        store.set(guiFoldersStorageKey, gui.getFoldersState())
+      });
     const createAsset = {};
     const assetsPromises = [];
     let assetsPromise = null;
@@ -407,7 +411,10 @@ export class EditorView extends View {
     gui.addState('Map', this._terrain);
     gui.addState('Brush', this._heightCanvas);
 
-    const lights = gui.addFolder('Lights');
+    const lights = gui.addFolder('Lights')
+      .onChange(gui.touch.bind(gui));
+    gui.applyFolderState(lights);
+
     lights.addColor(guiConfig.lights, 'ambient_color')
       .onChange(guiChange.lights.ambient_color)
       .listen();
@@ -421,9 +428,11 @@ export class EditorView extends View {
       .onChange(guiChange.lights.directional_intensity)
       .listen();
 
-    const spawn = gui.addFolder('Spawn asset');
+    const spawn = gui.addFolder('Spawn asset')
+      .onChange(gui.touch.bind(gui));
+    gui.applyFolderState(spawn);
 
-    this._loadAssets(config.assets, spawn, assetsPromises, createAsset);
+    this._loadAssets(config.assets, spawn, gui, assetsPromises, createAsset);
     assetsPromise = Promise.all(assetsPromises);
 
     gui.add(guiChange, 'save');
@@ -434,7 +443,7 @@ export class EditorView extends View {
     this._guiApply(guiConfig, guiChange);
   }
 
-  _loadAssets(assetsURLs, gui, promises, assets) {
+  _loadAssets(assetsURLs, gui, rootGUI, promises, assets) {
     each(assetsURLs, (value, key) => {
       if (typeof value === 'string') {
         promises.push(new Promise(resolve => {
@@ -479,7 +488,10 @@ export class EditorView extends View {
           });
         }));
       } else {
-        this._loadAssets(value, gui.addFolder(key), promises, assets);
+        const folder = gui.addFolder(key)
+          .onChange(rootGUI.touch.bind(rootGUI));
+        rootGUI.applyFolderState(folder);
+        this._loadAssets(value, folder, rootGUI, promises, assets);
       }
     });
   }
