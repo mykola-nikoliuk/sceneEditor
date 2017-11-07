@@ -47,7 +47,6 @@ const mouseData = {
 };
 
 const uv = new THREE.Vector2(0, 0);
-let drawEnabled = true;
 
 export class EditorView extends View {
   constructor(renderer) {
@@ -424,12 +423,37 @@ export class EditorView extends View {
       .onChange(guiChange.lights.directional_intensity)
       .listen();
 
+    const spawnConfig = {
+      scale: {
+        min: 1,
+        max: 1
+      },
+      rotation: true
+    };
     const spawn = gui.addFolder('Spawn asset')
       .onChange(gui.touch);
     gui.applyFolderState(spawn);
+    spawn.add(spawnConfig, 'rotation');
+    spawn.add(spawnConfig.scale, 'min', 0, 2, 0.05)
+      .name('scale (min)')
+      .onChange(value => {
+        if (value > spawnConfig.scale.max) {
+          spawnConfig.scale.max = value;
+        }
+      })
+      .listen();
+    spawn.add(spawnConfig.scale, 'max', 0, 2, 0.05)
+      .name('scale (max)')
+      .onChange(value => {
+        if (value < spawnConfig.scale.min) {
+          spawnConfig.scale.min = value;
+        }
+      })
+      .listen();
 
-    this._loadAssets(config.assets, spawn, gui, assetsPromises, createAsset);
+    this._loadAssets(config.assets, spawn, gui, assetsPromises, createAsset, spawnConfig);
     assetsPromise = Promise.all(assetsPromises);
+
 
     const materialsGUI = gui.addFolder('Materials')
       .onChange(gui.touch);
@@ -456,7 +480,7 @@ export class EditorView extends View {
     this._guiApply(guiConfig, guiChange);
   }
 
-  _loadAssets(assetsURLs, gui, rootGUI, promises, assets) {
+  _loadAssets(assetsURLs, gui, rootGUI, promises, assets, spawnConfig) {
     each(assetsURLs, (value, key) => {
       if (typeof value === 'string') {
         promises.push(new Promise(resolve => {
@@ -477,14 +501,16 @@ export class EditorView extends View {
               let clone = mesh.clone();
 
               if (mesh.animations && mesh.animations.length) {
-                // todo: fix that hack somehow
-                clone.scale.multiplyScalar(1 / 39.370079040527344);
-
                 clone.mixer = new THREE.AnimationMixer(clone);
                 this._mixers.push(clone.mixer);
                 clone.animation = clone.animation = clone.mixer.clipAction(mesh.animations[0]);
                 clone.animation.startAt(-Math.random() * 3);
                 clone.animation.play();
+
+                // todo: fix that hack somehow
+                const group = new THREE.Group();
+                clone.scale.multiplyScalar(1 / 39.370079040527344);
+                clone = group.add(clone);
               }
 
               clone.name = key;
@@ -493,7 +519,7 @@ export class EditorView extends View {
             };
 
             const guiObject = {
-              [key]: this._setSpawnAsset.bind(this, assets[key])
+              [key]: this._setSpawnAsset.bind(this, assets[key], spawnConfig)
             };
 
             gui.add(guiObject, key);
@@ -504,12 +530,12 @@ export class EditorView extends View {
         const folder = gui.addFolder(key)
           .onChange(rootGUI.touch);
         rootGUI.applyFolderState(folder);
-        this._loadAssets(value, folder, rootGUI, promises, assets);
+        this._loadAssets(value, folder, rootGUI, promises, assets, spawnConfig);
       }
     });
   }
 
-  _setSpawnAsset(createAsset) {
+  _setSpawnAsset(createAsset, spawnConfig) {
     if (this._menu.mode !== EditorMenu.MODES.EDIT_ASSETS) {
       this._menu.mode = EditorMenu.MODES.EDIT_ASSETS;
     }
@@ -528,8 +554,16 @@ export class EditorView extends View {
         });
       }
     });
+    this._randomSpawnAsset(spawnConfig);
 
-    this._spawnConstructor = createAsset;
+    this._spawnConstructor = () => {
+      const asset = createAsset();
+      asset.position.copy(this._spawnAsset.position);
+      asset.rotation.copy(this._spawnAsset.rotation);
+      asset.scale.copy(this._spawnAsset.scale);
+      this._randomSpawnAsset(spawnConfig);
+      return asset;
+    };
     this._scene.add(this._spawnAsset);
   }
 
@@ -540,6 +574,16 @@ export class EditorView extends View {
       });
       this._scene.remove(this._spawnAsset);
       this._spawnAsset = null;
+    }
+  }
+
+  _randomSpawnAsset(spawnConfig) {
+    const {scale: {min, max}, rotation} = spawnConfig;
+    const scale = (max - min) * Math.random() + min;
+
+    this._spawnAsset.scale.set(scale, scale, scale);
+    if (rotation) {
+      this._spawnAsset.rotation.y = Math.PI * 2 * Math.random();
     }
   }
 
@@ -589,7 +633,6 @@ export class EditorView extends View {
         this._deselectAsset();
         if (this._spawnAsset) {
           const asset = this._spawnConstructor();
-          asset.position.copy(this._spawnAsset.position);
           this._assets.push(asset);
           this._scene.add(asset);
         }
