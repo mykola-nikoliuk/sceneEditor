@@ -330,7 +330,6 @@ export class GameView extends View {
         this._selectedUnits.push(unit);
       }
     });
-    console.log(this._selectedUnits);
     // const mouse = {
     //   x: ( event.clientX / screenService.width ) * 2 - 1,
     //   y: -( event.clientY / screenService.height ) * 2 + 1

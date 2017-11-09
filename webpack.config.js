@@ -12,7 +12,7 @@ module.exports = (env = {}) => {
       main: ['./index.js']
     },
     output: {
-      path: path.resolve(__dirname, 'dist'),
+      path: path.resolve(__dirname, 'dist', 'game'),
       filename: '[name].js'
     },
     module: {

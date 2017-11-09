@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node tools/server.js 8080",
-    "build": "webpack --env.production"
+    "start.game": "node tools/server.js 8080",
+    "build.game": "webpack --env.production",
+    "build.editor": "webpack --config webpack.config.editor.js"
   },
   "keywords": [],
   "author": "",
@@ -35,6 +36,8 @@
   },
   "dependencies": {
     "lodash": "^4.17.4",
+    "socket.io": "^2.0.4",
+    "socket.io-client": "^2.0.4",
     "store": "^2.0.12"
   }
 }

@@ -8,7 +8,7 @@
   ],
   "plugins": [
     ["module-resolver", {
-      "root": ["src/classes", "src"],
+      "root": ["src/classes", "src", "editor"],
       "alias": {}
     }]
   ]

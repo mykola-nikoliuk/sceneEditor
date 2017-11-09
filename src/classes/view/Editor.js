@@ -28,6 +28,7 @@ import {copySkinnedGroup} from 'utils/copySkinnedGroup';
 import {findRootParent} from 'utils/findRootParent';
 import {getMeshChildrenArray} from 'utils/getMeshChildrenArray';
 import {materialToGUI} from 'utils/materialToGUI';
+import {connection} from 'connection';
 
 const assetsContext = 'editor/assets/';
 const guiStorageKey = 'editor.gui.r1';
@@ -47,20 +48,24 @@ const mouseData = {
 };
 
 const uv = new THREE.Vector2(0, 0);
+const defaultState = {
+  profiles: {},
+  currentProfile: ''
+};
 
 export class EditorView extends View {
   constructor(renderer) {
-    super(renderer);
+    super(renderer, defaultState);
     this._mixers = [];
     this._scene = new THREE.Scene();
     this._target = new THREE.Vector3(0, 0, 0);
     this._raycaster = new THREE.Raycaster();
     this._stats = new Stats();
     this._renderTarget = new THREE.WebGLRenderTarget(screenService.width, screenService.height);
-    this._spawnRenderTarget = new THREE.WebGLRenderTarget(screenService.width, screenService.height);
     document.body.appendChild(this._stats.dom);
 
     const promises = [];
+    this._initConnection();
     this._createLayers();
     this._createCamera();
     this._createScene();
@@ -78,6 +83,17 @@ export class EditorView extends View {
 
   _test() {
 
+  }
+
+  stateWillUpdate(state) {
+    if (this._serverGUI) {
+      this._profileGUI && this._profileGUI.remove();
+      this._profileGUI = this._serverGUI
+        .add(state, 'currentProfile', Object.keys(state.profiles))
+        .name('profile')
+        .onChange(this._changeProfile.bind(this))
+        .listen();
+    }
   }
 
   update(delta) {
@@ -105,6 +121,15 @@ export class EditorView extends View {
 
   destroy() {
     this._resizeUnsubsribe();
+  }
+
+  _initConnection() {
+    connection.on('state', state => {
+      console.log(state);
+      this.setState({
+        profiles: state.profiles
+      });
+    });
   }
 
   _createCamera() {
@@ -302,7 +327,7 @@ export class EditorView extends View {
       .onChange(() => {
         store.set(guiFoldersStorageKey, gui.getFoldersState())
       });
-    const createAsset = {};
+    const createAsset = this._assetsConstructors = {};
     const assetsPromises = [];
     let assetsPromise = null;
     let guiConfig = Object.assign({}, {
@@ -330,69 +355,50 @@ export class EditorView extends View {
         }
       },
       save: () => {
-        const stateNames = ['_terrain', '_heightCanvas'];
-        const states = {};
-        stateNames.forEach(stateName => {
-          states[stateName] = Object.toStringTypes(this[stateName].getState());
-        });
 
+        const profile = prompt('Enter profile name', this._state.currentProfile);
+        if (profile) {
+          const data = {};
 
-        const assets = map(this._assets, asset => {
-          return {
-            name: asset.name,
-            position: asset.position.toArray(),
-            rotation: asset.rotation.toArray(),
-            scale: asset.scale.toArray()
+          const stateNames = ['_terrain', '_heightCanvas'];
+          const states = {};
+          stateNames.forEach(stateName => {
+            states[stateName] = Object.toStringTypes(this[stateName].getState());
+          });
+
+          const assets = map(this._assets, asset => {
+            return {
+              name: asset.name,
+              position: asset.position.toArray(),
+              rotation: asset.rotation.toArray(),
+              scale: asset.scale.toArray()
+            };
+          });
+          data[guiStorageKey] = guiConfig;
+
+          data[assetsStorageKey] = assets;
+          data[statesStorageKey] = states;
+
+          let imageData = this._heightCanvas.getData();
+          data[terrainHeightStorageKey] = {
+            data: Array.prototype.slice.call(imageData.data),
+            width: imageData.width,
+            height: imageData.height
           };
-        });
-        store.set(guiStorageKey, guiConfig);
-        store.set(assetsStorageKey, assets);
-        store.set(statesStorageKey, states);
-        let imageData = this._heightCanvas.getData();
-        store.set(terrainHeightStorageKey, {
-          data: Array.prototype.slice.call(imageData.data),
-          width: imageData.width,
-          height: imageData.height
-        });
-        store.set('editor.r1.camera', {
-          position: this._camera.position.toArray(),
-          target: this._orbitControls.target.toArray()
-        });
+          data['editor.r1.camera'] = {
+            position: this._camera.position.toArray(),
+            target: this._orbitControls.target.toArray()
+          };
+
+          connection.emit('save_profile', {profile, data});
+        }
       },
-      load: () => {
-        const states = store.get(statesStorageKey);
-        for (let key in states) {
-          if (states.hasOwnProperty(key)) {
-            this[key].setState(Object.parseStringTypes(states[key]));
+      remove: () => {
+        if (confirm(`Are you really want to remove "${this._state.currentProfile}" profile?`)) {
+          connection.emit('remove_profile', {profile: this._state.currentProfile});
+          if (this._state.profiles[this._state.currentProfile]) {
+            delete this._state.profiles[this._state.currentProfile];
           }
-        }
-
-        const imageData = store.get(terrainHeightStorageKey);
-        if (imageData) {
-          this._heightCanvas.setData(imageData);
-        }
-
-        assetsPromise.then(() => {
-          while (this._assets.length) {
-            this._scene.remove(this._assets.pop());
-          }
-          const loadedAssets = store.get(assetsStorageKey);
-          if (loadedAssets) {
-            loadedAssets.forEach(asset => {
-              const mesh = createAsset[asset.name]();
-              mesh.position.fromArray(asset.position);
-              mesh.rotation.fromArray(asset.rotation);
-              mesh.scale.fromArray(asset.scale);
-              this._scene.add(mesh);
-              this._assets.push(mesh);
-            });
-          }
-          this._selectedAsset = null;
-        });
-        const loadedConfig = store.get(guiStorageKey);
-        if (loadedConfig) {
-          Object.extend(guiConfig, loadedConfig);
-          this._guiApply(guiConfig, guiChange);
         }
       },
       reset: () => {
@@ -402,6 +408,11 @@ export class EditorView extends View {
         }
       }
     };
+
+
+    this._serverGUI = gui.addFolder('Server')
+      .onChange(gui.touch);
+    gui.applyFolderState(this._serverGUI);
 
     gui.addState('Map', this._terrain);
     gui.addState('Brush', this._heightCanvas);
@@ -453,6 +464,7 @@ export class EditorView extends View {
 
     this._loadAssets(config.assets, spawn, gui, assetsPromises, createAsset, spawnConfig);
     assetsPromise = Promise.all(assetsPromises);
+    assetsPromise.then(this._addServerGUI.bind(this, this._serverGUI));
 
 
     const materialsGUI = gui.addFolder('Materials')
@@ -473,11 +485,70 @@ export class EditorView extends View {
     });
 
     gui.add(guiChange, 'save');
-    gui.add(guiChange, 'load');
+    gui.add(guiChange, 'remove');
     gui.add(guiChange, 'reset');
 
-    guiChange.load();
     this._guiApply(guiConfig, guiChange);
+  }
+
+  _addServerGUI(gui) {
+    this._profileGUI = gui
+      .add(this._state, 'currentProfile', Object.keys(this._state.profiles))
+      .name('profile')
+      .onChange(this._changeProfile.bind(this))
+      .listen();
+  }
+
+  _changeProfile(value) {
+    const profile = this._state.profiles[value];
+    if (profile) {
+
+      const states = profile[statesStorageKey];
+      for (let key in states) {
+        if (states.hasOwnProperty(key)) {
+          this[key].setState(Object.parseStringTypes(states[key]));
+        }
+      }
+
+      const imageData = profile[terrainHeightStorageKey];
+      if (imageData) {
+        this._heightCanvas.setData(imageData);
+      }
+
+      while (this._assets.length) {
+        this._scene.remove(this._assets.pop());
+      }
+      const loadedAssets = profile[assetsStorageKey];
+      if (loadedAssets) {
+        loadedAssets.forEach(asset => {
+          const mesh = this._assetsConstructors[asset.name]();
+          mesh.position.fromArray(asset.position);
+          mesh.rotation.fromArray(asset.rotation);
+          mesh.scale.fromArray(asset.scale);
+          this._scene.add(mesh);
+          this._assets.push(mesh);
+        });
+      }
+      this._selectedAsset = null;
+
+      // todo: fix light save
+      // const loadedConfig = profile[guiStorageKey];
+      // if (loadedConfig) {
+      //   Object.extend(, loadedConfig);
+      //   this._guiApply(guiConfig, guiChange);
+      // }
+
+      const camera = profile['editor.r1.camera'];
+      this._camera.position.fromArray(camera.position);
+      this._camera.lookAt(new THREE.Vector3().fromArray(camera.target));
+
+
+      // for (let key in states) {
+      //   if (states.hasOwnProperty(key)) {
+      //     this[key].setState(Object.parseStringTypes(states[key]));
+      //   }
+      // }
+    }
   }
 
   _loadAssets(assetsURLs, gui, rootGUI, promises, assets, spawnConfig) {

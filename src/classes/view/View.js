@@ -1,9 +1,9 @@
-import {Defer} from 'general/Defer';
+import {State} from 'general/State';
 import {screenService} from 'general/ScreenService';
 
-export class View extends Defer {
-  constructor(renderer) {
-    super();
+export class View extends State {
+  constructor(renderer, state) {
+    super(state);
     this._renderer = renderer;
     this._camera = null;
     this._scene = null;
