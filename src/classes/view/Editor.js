@@ -492,6 +492,7 @@ export class EditorView extends View {
   }
 
   _addServerGUI(gui) {
+    this._profileGUI && this._profileGUI.remove();
     this._profileGUI = gui
       .add(this._state, 'currentProfile', Object.keys(this._state.profiles))
       .name('profile')
@@ -540,8 +541,8 @@ export class EditorView extends View {
 
       const camera = profile['editor.r1.camera'];
       this._camera.position.fromArray(camera.position);
-      this._camera.lookAt(new THREE.Vector3().fromArray(camera.target));
-
+      this._orbitControls.target = new THREE.Vector3().fromArray(camera.target);
+      this._orbitControls.update();
 
       // for (let key in states) {
       //   if (states.hasOwnProperty(key)) {

@@ -1,15 +1,14 @@
 {
-  "name": "wp",
+  "name": "game",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start.game": "node tools/server.js 8080",
-    "build.game": "webpack --env.production",
-    "build.editor": "webpack --config webpack.config.editor.js"
+    "start": "node tools/server.js 8080",
+    "build": "webpack --env.production"
   },
   "keywords": [],
-  "author": "",
+  "author": "Nick Nikoliuk",
   "license": "ISC",
   "devDependencies": {
     "babel-cli": "^6.26.0",

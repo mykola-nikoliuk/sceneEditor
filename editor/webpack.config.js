@@ -10,15 +10,11 @@ module.exports = (env = {}) => {
       main: ['./index.js']
     },
     output: {
-      path: path.resolve(__dirname, 'dist', 'editor'),
+      path: path.resolve(__dirname, '..', 'dist', 'editor'),
       filename: '[name].js'
     },
     module: {
       loaders: [{
-        test: /\.js$/,
-        loader: 'babel-loader',
-        exclude: /node_modules/
-      }, {
         test: /\.json$/,
         loader: 'json-loader'
       }]

@@ -1,10 +1,8 @@
 const app = require('express')();
 const http = require('http').Server(app);
-import initIO from 'socket.io';
+const io = require('socket.io')(http);
 const fs = require('fs');
 const path = require('path');
-
-const io = initIO(http);
 
 const DATABASE_PATH = path.join(__dirname, 'database.db');
 let database = {
@@ -17,7 +15,7 @@ function init() {
   if (fs.existsSync(DATABASE_PATH)) {
     database = JSON.parse(fs.readFileSync(DATABASE_PATH));
   } else {
-    fs.writeFileSync(DATABASE_PATH, JSON.stringify(database, null, 2));
+    fs.writeFileSync(DATABASE_PATH, JSON.stringify(database, null));
   }
 }
 
@@ -36,14 +34,14 @@ io.on('connection', socket => {
 
   socket.on('save_profile', ({profile, data}) => {
     database.profiles[profile] = data;
-    fs.writeFileSync(DATABASE_PATH, JSON.stringify(database, null, 2));
+    fs.writeFileSync(DATABASE_PATH, JSON.stringify(database, null));
     sendState(io);
   });
 
   socket.on('remove_profile', ({profile}) => {
     if (database.profiles[profile]) {
       delete database.profiles[profile];
-      fs.writeFileSync(DATABASE_PATH, JSON.stringify(database, null, 2));
+      fs.writeFileSync(DATABASE_PATH, JSON.stringify(database, null));
       sendState(io);
     }
   });
