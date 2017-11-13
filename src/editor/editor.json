@@ -5,8 +5,13 @@
     },
     "foliages": {
       "Arc": "arc/arc.FBX",
-      "Fir": "fir/fir.FBX"
+      "Fir": "fir/fir.FBX",
+      "Fern": "fern/fern.FBX",
+      "Tree": "tree/tree.FBX"
     },
     "Cube Meter": "cube/cube.FBX"
+  },
+  "terrain": {
+    "skins": ["clay", "dirt", "grass", "ground", "leaves", "moss", "sand", "stone"]
   }
 }
