@@ -12,8 +12,8 @@ import 'style/dat.gui.styl';
 import 'utils/utils';
 import Stats from 'vendors/stats.min';
 import heightMapURL from 'editor/textures/height_map.png';
-import textureMapURL from 'resources/textures/terrain/grass.png';
-import normalMapURL from 'resources/textures/terrain/grass_n.png';
+import textureMapURL from 'resources/textures/terrain/grass/map.jpg';
+import normalMapURL from 'resources/textures/terrain/grass/normal.jpg';
 import config from 'editor/editor.json';
 import right from 'resources/skyboxes/blueSky/right.jpg';
 import left from 'resources/skyboxes/blueSky/left.jpg';
@@ -87,12 +87,7 @@ export class EditorView extends View {
 
   stateWillUpdate(state) {
     if (this._serverGUI) {
-      this._profileGUI && this._profileGUI.remove();
-      this._profileGUI = this._serverGUI
-        .add(state, 'currentProfile', Object.keys(state.profiles))
-        .name('profile')
-        .onChange(this._changeProfile.bind(this))
-        .listen();
+      this._addServerGUI(this._serverGUI);
     }
   }
 
@@ -413,6 +408,30 @@ export class EditorView extends View {
     this._serverGUI = gui.addFolder('Server')
       .onChange(gui.touch);
     gui.applyFolderState(this._serverGUI);
+
+    this._terrainSkinsGUI = gui.addFolder('Terrrain skins')
+      .onChange(gui.touch);
+    gui.applyFolderState(this._terrainSkinsGUI);
+    const skinsInfo = this._loadTerrainSkins();
+    skinsInfo.promise.then(() => {
+      const material = this._terrain.mesh.children[0].material;
+      const repeat = {repeat: 200};
+
+      this._terrainSkinsGUI.add(skinsInfo, 'defaultSkin', Object.keys(skinsInfo.skins))
+        .onChange(skin => {
+          material.map = skinsInfo.skins[skin].map;
+          material.normalMap = skinsInfo.skins[skin].normalMap;
+          material.map.wrapS = material.map.wrapT =
+            material.normalMap.wrapS = material.normalMap.wrapT = THREE.RepeatWrapping;
+          material.map.repeat.set(repeat.repeat, repeat.repeat);
+          material.normalMap.repeat.set(repeat.repeat, repeat.repeat);
+        });
+      this._terrainSkinsGUI.add(repeat, 'repeat', 1, 300)
+        .onChange(repeat => {
+          material.map.repeat.set(repeat, repeat);
+          material.normalMap.repeat.set(repeat, repeat);
+        });
+    });
 
     gui.addState('Map', this._terrain);
     gui.addState('Brush', this._heightCanvas);
@@ -771,5 +790,26 @@ export class EditorView extends View {
       this._heightCanvas = new Canvas(64, 64);
       this._heightCanvas.onLoad(resolve);
     });
+  }
+
+  _loadTerrainSkins() {
+    const skinsPromises = [];
+    const skins = {};
+    const loader = new THREE.TextureLoader();
+
+    config.terrain.skins.forEach(skin => {
+      skins[skin] = {};
+      skinsPromises.push(new Promise(resolve => {
+        skins[skin].map = loader.load(`resources/textures/terrain/${skin}/map.jpg`, resolve)
+      }));
+      skinsPromises.push(new Promise(resolve => {
+        skins[skin].normalMap = loader.load(`resources/textures/terrain/${skin}/normal.jpg`, resolve)
+      }));
+    });
+    return {
+      promise: Promise.all(skinsPromises),
+      skins: skins,
+      defaultSkin: ''
+    }
   }
 }

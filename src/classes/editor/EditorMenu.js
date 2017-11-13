@@ -29,7 +29,12 @@ export class EditorMenu extends Mesh {
         const x = index * (itemsMargin + itemSize) - itemsWidth / 2;
         const cube = new THREE.Mesh(
           new THREE.CubeGeometry(itemSize, itemSize, itemSize),
-          new THREE.MeshLambertMaterial({map, transparent: true})
+          new THREE.MeshLambertMaterial({
+            map,
+            transparent: true,
+            depthTest: false,
+            depthWrite: false
+          })
         );
         cube.position.set(x + itemSize / 2, ITEM_Y, 0);
         cube.mode = item.mode;
