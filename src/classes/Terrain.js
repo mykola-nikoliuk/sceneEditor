@@ -192,13 +192,13 @@ export default class Terrain extends State {
 
   _addVertexUV({x, y}) {
     this._geometry.faceVertexUvs[0].push([
-      new THREE.Vector2((x - 1) / this._heightGrid.width, y / this._heightGrid.height),
-      new THREE.Vector2(x / this._heightGrid.width, (y - 1) / this._heightGrid.height),
-      new THREE.Vector2((x - 1) / this._heightGrid.width, (y - 1) / this._heightGrid.height),
+      new THREE.Vector2((x - 1) / this._heightGrid.width, 1 - y / this._heightGrid.height),
+      new THREE.Vector2(x / this._heightGrid.width, 1 - (y - 1) / this._heightGrid.height),
+      new THREE.Vector2((x - 1) / this._heightGrid.width, 1 - (y - 1) / this._heightGrid.height),
     ], [
-      new THREE.Vector2(x / this._heightGrid.width, y / this._heightGrid.height),
-      new THREE.Vector2(x / this._heightGrid.width, (y - 1) / this._heightGrid.height),
-      new THREE.Vector2((x - 1) / this._heightGrid.width, y / this._heightGrid.height),
+      new THREE.Vector2(x / this._heightGrid.width, 1 - y / this._heightGrid.height),
+      new THREE.Vector2(x / this._heightGrid.width, 1 - (y - 1) / this._heightGrid.height),
+      new THREE.Vector2((x - 1) / this._heightGrid.width, 1 - y / this._heightGrid.height),
     ]);
   }
 

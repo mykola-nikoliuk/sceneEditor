@@ -12,6 +12,6 @@
     "Cube Meter": "cube/cube.FBX"
   },
   "terrain": {
-    "skins": ["clay", "dirt", "grass", "ground", "leaves", "moss", "sand", "stone"]
+    "skins": ["clay", "dirt", "grass", "ground", "leaves", "moss", "sand", "stone", "stones"]
   }
 }
