@@ -22,8 +22,8 @@ import soil from 'resources/texture/soil/soil.jpg';
 import soilBump from 'resources/texture/soil/soil_bump.jpg';
 import blend from 'resources/blendMap.png';
 
-import vertexShader from 'shaders/terrain.vert';
-import fragmentShader from 'shaders/terrain.frag';
+import vertexShader from 'shaders/BlendShader/blend.vert';
+import fragmentShader from 'shaders/BlendShader/blend.frag';
 
 
 const cameraLimit = Math.PI / 720;

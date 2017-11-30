@@ -4,6 +4,7 @@ import map from 'lodash/map';
 import waterNormalsMapURL from 'resources/textures/terrain/water_normal_map.jpg';
 import {State} from 'general/State';
 import {RangeNumber} from 'common/RangeNumber';
+import {BlendShader} from 'shaders/BlendShader';
 
 const repeat = 200;
 
@@ -22,7 +23,7 @@ const defaultState = {
 
 export default class Terrain extends State {
   constructor({
-    maps: {heightMapURL, textureMapURL, normalMapURL = null, heightCanvas = null},
+    maps: {heightMapURL, /*textureMapURL,*/ normalMapURL = null, heightCanvas = null},
     env,
     size: {x: width, y: height, z: depth},
     water,
@@ -43,49 +44,54 @@ export default class Terrain extends State {
       this._geometry = new THREE.Geometry();
       this._geometry.faceVertexUvs[0] = [];
 
-      new THREE.TextureLoader().load(textureMapURL, map => {
-        new THREE.TextureLoader().load(normalMapURL, normalMap => {
-          map.wrapS =
-            map.wrapT =
-              normalMap.wrapS =
-                normalMap.wrapT = THREE.RepeatWrapping;
-          map.repeat.set(repeat, repeat);
-          normalMap.repeat.set(repeat, repeat);
+      // new THREE.TextureLoader().load(textureMapURL, map => {
+      new THREE.TextureLoader().load(normalMapURL, normalMap => {
+        // map.wrapS =
+        //   map.wrapT =
+        //     normalMap.wrapS =
+        //       normalMap.wrapT = THREE.RepeatWrapping;
+        // map.minFilter = THREE.NearestFilter;
+        // map.magFilter = THREE.NearestFilter;
+        // map.repeat.set(repeat, repeat);
+        normalMap.repeat.set(repeat, repeat);
 
-          const material = new THREE.MeshPhongMaterial({
-            wireframe: false,
-            map: map,
-            normalMap: normalMap,
-            shininess: 10,
-            normalScale: new THREE.Vector2(2, 2),
-            side: THREE.DoubleSide
-          });
+        // const material = new THREE.MeshPhongMaterial({
+        //   wireframe: false,
+        //   map: map,
+        //   transparent: true,
+        ////   normalMap: normalMap,
+        // shininess: 10,
+        // normalScale: new THREE.Vector2(2, 2),
+        // side: THREE.DoubleSide
+        // });
 
-          this._heightGrid = new ImageGrid(heightMapURL);
+        const material = new THREE.ShaderMaterial(BlendShader);
 
-          this._heightGrid.parse(({x, y, color}) => {
-            this._addVertex({x, y, color});
-            if (y && x) {
-              this._addVertexUV({x, y});
-              this._addFaces({x, y});
-            }
-          }).then(() => {
-            this._geometry.computeVertexNormals();
-            this._geometry.computeFaceNormals();
-            const terrainMesh = this._terrain = new THREE.Mesh(this._geometry, material);
-            terrainMesh.scale.set(width, height, depth);
-            terrainMesh.receiveShadow = true;
-            this._mesh.add(terrainMesh);
+        this._heightGrid = new ImageGrid(heightMapURL);
 
-            if (water) {
-              this._addWater(env, water).then(resolve.bind(null, this._mesh));
-            } else {
-              this._water = null;
-              resolve(this._mesh);
-            }
-          });
+        this._heightGrid.parse(({x, y, color}) => {
+          this._addVertex({x, y, color});
+          if (y && x) {
+            this._addVertexUV({x, y});
+            this._addFaces({x, y});
+          }
+        }).then(() => {
+          this._geometry.computeVertexNormals();
+          this._geometry.computeFaceNormals();
+          const terrainMesh = this._terrain = new THREE.Mesh(this._geometry, material);
+          terrainMesh.scale.set(width, height, depth);
+          terrainMesh.receiveShadow = true;
+          this._mesh.add(terrainMesh);
+
+          if (water) {
+            this._addWater(env, water).then(resolve.bind(null, this._mesh));
+          } else {
+            this._water = null;
+            resolve(this._mesh);
+          }
         });
       });
+      // });
     });
   }
 
