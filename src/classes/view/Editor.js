@@ -251,6 +251,7 @@ export class EditorView extends View {
         const intersects = this._getIntersects(event, [this._terrain.mesh.children[0]]);
         if (intersects.length) {
           uv.copy(intersects[0].uv);
+          uv.y = 1 - uv.y;
           mouseData.heightDrawingEnabled = true;
         }
         break;
@@ -267,6 +268,7 @@ export class EditorView extends View {
           const intersects = this._getIntersects(event, [this._terrain.mesh.children[0]]);
           if (intersects.length > 0 && intersects[0].uv) {
             uv.copy(intersects[0].uv);
+            uv.y = 1 - uv.y;
           }
         }
         break;

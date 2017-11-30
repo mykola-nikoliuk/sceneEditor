@@ -53,11 +53,11 @@ export default class Terrain extends State {
           normalMap.repeat.set(repeat, repeat);
 
           const material = new THREE.MeshPhongMaterial({
-            wireframe: false,
+            //wireframe: false,
             map: map,
-            normalMap: normalMap,
-            shininess: 10,
-            normalScale: new THREE.Vector2(2, 2),
+            //normalMap: normalMap,
+            //shininess: 10,
+            //normalScale: new THREE.Vector2(2, 2),
             side: THREE.DoubleSide
           });
 
